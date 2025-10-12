@@ -26,7 +26,7 @@ const ALIEN_W  = 42, ALIEN_H = 30;
 const GHOST_W  = 28*1.2, GHOST_H = 28*1.2;
 
 const KEY_W = 28, KEY_H = 28;
-theconst COIN_W = 20*1.4, COIN_H = 20*1.4;
+const COIN_W = 20*1.4, COIN_H = 20*1.4;
 const CHEST_W = 36, CHEST_H = 30;
 
 const PLAYER_SPEED = 160;
