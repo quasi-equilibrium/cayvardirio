@@ -1,25 +1,17 @@
-/* ================== Storm Night: Tea Runner — Mouse Aim + WASD (RenderScale + BG Crop) ==================
-   Büyük performans yamaları:
-   1) Dinamik çözünürlük: Masaüstünde canvas iç çözünürlüğünü %75'te render edip CSS ile büyütüyoruz.
-   2) Arka planı her karede tam değil, SADECE viewport kadar çiziyoruz (9 arg. image()).
-
-   - Hareket: WASD / Yön tuşları
-   - Ateş: Mouse sol tuş veya Space (mouse yönüne)
-   - Pause: sağ üst "II"
-   - Fullscreen: HP barının yanında ⛶
+/* ================== Storm Night: Tea Runner — ASSETS VERSION (WAV+IMG) ==================
+   - Dünya (harita): 2000×1400, Canvas: responsive (pencere boyutu / fullscreen)
+   - Joystick: y≈0.82H, daha saydam (~%35)
+   - Otomatik ateş: 1 sn arayla, hareket yönüne
+   - Pause: sağ üst "II" ikonuna dokun/tıkla
+   - Fullscreen: HP barının yanında ⛶ butonu (tık/dokun → tam ekran aç/kapa)
+   - p5.sound yoksa (yüklenmemişse) ses çağrıları guard'lı (oyun yine çalışır)
 */
 
+/* === (1) Sabitler & Tema === */
 const WORLD_W = 2000, WORLD_H = 1400;
+let VIEW_W, VIEW_H;
 
-// Cihaz tespiti + render ölçeği (gerekirse 0.6–0.9 deneyebilirsin)
-const IS_MOBILE = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-const RENDER_SCALE = IS_MOBILE ? 1.0 : 0.75;
-
-let VIEW_W, VIEW_H;            // iç çözünürlük (canvas piksel)
-let CSS_W, CSS_H;              // ekranda görünen boyut (px)
-
-/* Boyutlar */
-const PLAYER_W = 36*1.5, PLAYER_H = 36*1.5;  // %50 büyük
+const PLAYER_W = 36*1.3, PLAYER_H = 36*1.3;
 const SPOON_W  = 46, SPOON_H = 58;
 const ALIEN_W  = 42, ALIEN_H = 30;
 const GHOST_W  = 28*1.2, GHOST_H = 28*1.2;
@@ -28,10 +20,10 @@ const KEY_W = 28, KEY_H = 28;
 const COIN_W = 20*1.4, COIN_H = 20*1.4;
 const CHEST_W = 36, CHEST_H = 30;
 
-/* Oyun sabitleri */
 const PLAYER_SPEED = 160;
 const BULLET_SPEED = 480;
 const SHOOT_CD_MS  = 260;
+const AUTO_SHOOT_MS= 1000; // otomatik ateş
 
 const HP_MAX = 100;
 const DMG_GHOST = 15;
@@ -45,14 +37,14 @@ const L2_INVULN_TIME_MS = 30000;
 const KEYS_NEEDED = 3;
 const LEVEL_TIME  = 180;
 
-const CHEST_SPAWN_EVERY = 10;
+const CHEST_SPAWN_EVERY = 10; // sn
 const GUARANTEE_KEYS_WINDOW_L1 = 90;
 const GUARANTEE_KEYS_WINDOW_L2 = 120;
 const GUARANTEE_KEYS_COUNT     = 2;
 
-const ENEMY_SPEED_MULT = 0.95;  // hızlar %5 az
+// Düşman hızlarını %5 azaltma çarpanı
+const ENEMY_SPEED_MULT = 0.95;
 
-/* Tema */
 const THEME = {
   uiBlack: [0,0,0],
   uiWhite: [255,255,255],
@@ -71,7 +63,7 @@ const RAIN_COUNT = 160;
 const BASE_FLASH_CHANCE = 0.009;
 const AOE_RADIUS_BASE = 60;
 
-/* Durum */
+/* === (2) Durum === */
 let px,py,vx=0,vy=0,lastShoot=0,centerCam;
 let hp, shieldUntil=0, invulUntil=0;
 let scoreTotal=0, bestTotal=0;
@@ -85,28 +77,44 @@ let openedChestsKeysGiven=0, openedFlasksKeysGiven=0;
 let lightTelegraphs=[], lightStrikes=[];
 let keyCount=0, doorJustActivated=false;
 let lastMoveDir={x:1,y:0};
-let deathPhase=null, deathStart=0;
+let deathPhase=null, deathStart=0, zoomScale=1;
 let splashAlpha=0, splashFadeDir=1;
-let showSplash = true;
 let bgBrightness=1.0, masterVol=0.8;
 let levelStartTime=0, waveClock=0;
 let transitionStart=0;
 
-/* L2 */
+/* === (3) L2 Özel Durumlar === */
 let isL2=false;
 let l2_traps=[], l2_fingers=[], l2_telegraphs=[];
 let l2_flasks=[];
 let rain=[];
 
-/* Assetler */
+/* === (3.1) Joystick (dokunmatik+mouse) === */
+const JOY = {
+  cx: 0, cy: 0, baseR: 72, knobR: 30, active: false, id: -1,
+  dx: 0, dy: 0, opacity: 0.35
+};
+let lastAutoShot = 0;
+
+/* === (3.2) Fullscreen düğmesi alanı === */
+const FS_BTN = {x: 242, y: 8, w: 28, h: 20};
+let wasFullscreen = false;
+
+/* === (4) Görseller/Sesler === */
 let splashImg,bg1Img,bg1AltImg;
 let playerImg,spoonImg,alienImg,ghostImg,keyImg,coinImg,chestClosedImg,chestOpenImg;
+
+// L1 & L2 ölüm görselleri (png yoksa gif fallback):
 let deathL1, l2_death;
+
+// L2 varlıkları
 let l2_bg1,l2_bg2,l2_trap,l2_finger,l2_nazar,l2_honey,l2_mirror,l2_swing,l2_beak,l2_player,l2_flaskC,l2_flaskO;
+
+// SFX/Müzik (guard’lı kullanılacak)
 let sfxShoot,sfxDoor,sfxLightning,musicBg;
 let l2_musicBg,l2_sfxShoot,l2_sfxDoor,l2_sfxFinger;
 
-/* Yardımcılar */
+/* === (5) Yardımcılar === */
 function clamp(v,a,b){ return Math.max(a, Math.min(b,v)); }
 function dist2(ax,ay,bx,by){ let dx=ax-bx, dy=ay-by; return dx*dx+dy*dy; }
 function now(){ return millis(); }
@@ -118,20 +126,14 @@ function worldClamp(){ px=clamp(px,20,WORLD_W-20); py=clamp(py,20,WORLD_H-20); }
 function toggleFullscreen(){
   const fs = !fullscreen();
   fullscreen(fs);
-  setTimeout(()=>{ computeCanvasSize(); resizeCanvas(VIEW_W, VIEW_H); fitCanvasCSS(); }, 50);
+  setTimeout(()=>{ computeCanvasSize(); resizeCanvas(VIEW_W, VIEW_H); applyJoystickLayout(); }, 50);
 }
 function getDoorZone(){
   if (!isL2){ return { x: WORLD_W*0.8, y: 0, w: WORLD_W*0.2, h: WORLD_H*0.2 }; }
   else       { return { x: WORLD_W*0.4, y: WORLD_H*0.8, w: WORLD_W*0.2, h: WORLD_H*0.2 }; }
 }
-function getMouseWorld(){
-  // p5 mouseX/mouseY zaten canvas iç çözünürlüğünde gelir; ekstra ölçek gerekmiyor
-  const camX = clamp(px, VIEW_W/2, WORLD_W - VIEW_W/2);
-  const camY = clamp(py, VIEW_H/2, WORLD_H - VIEW_H/2);
-  return { x: mouseX - (VIEW_W/2 - camX), y: mouseY - (VIEW_H/2 - camY) };
-}
 
-/* Level akışı */
+/* ========================= LEVEL / ORTAK ========================= */
 function baseResetCommon(){
   const p=randInWorld(200); px=p.x; py=p.y; vx=vy=0; worldClamp();
   hp=HP_MAX; keyCount=0; doorJustActivated=false;
@@ -169,22 +171,11 @@ function updateBest(){
        bestTotal=Number(localStorage.getItem("tea_runner_best")||"0"); }catch(e){ bestTotal=bestTotal||0; }
 }
 
-/* Responsive + RenderScale */
-function computeCanvasSize(){
-  CSS_W = windowWidth;
-  CSS_H = windowHeight;
-  VIEW_W = Math.floor(CSS_W * RENDER_SCALE);
-  VIEW_H = Math.floor(CSS_H * RENDER_SCALE);
-}
-function fitCanvasCSS(){
-  const cnv = canvas || (this._renderer && this._renderer.canvas) || (window._renderer && window._renderer.canvas);
-  if (cnv){
-    cnv.style.width  = CSS_W + 'px';
-    cnv.style.height = CSS_H + 'px';
-  }
-}
+/* ========= Responsive Canvas ========= */
+function computeCanvasSize(){ VIEW_W = windowWidth; VIEW_H = windowHeight; }
+function applyJoystickLayout(){ JOY.cx = VIEW_W/2; JOY.cy = VIEW_H*0.82; }
 
-/* L1 – dikenler */
+/* ========================= L1 İçerikleri ========================= */
 function spawnThorns(n){
   for(let i=0;i<n;i++){
     const p=randInWorld(120); const w=random(120,240), h=random(60,160);
@@ -222,7 +213,7 @@ function updateThorns(){
   if (on) thornStayTime+=deltaTime; else thornStayTime=0;
 }
 
-/* L1 – sandık */
+/* Sandık (L1) */
 function spawnChest(){ const p=randInWorld(140); chests.push({x:p.x,y:p.y,open:false,alive:true,despawnAt:null}); }
 function trySpawnChest(dt){ chestSpawnClock+=dt; if (chestSpawnClock>=CHEST_SPAWN_EVERY){ chestSpawnClock=0; spawnChest(); } }
 function openChest(c){
@@ -234,7 +225,7 @@ function openChest(c){
     drop = "key"; openedChestsKeysGiven++;
   } else {
     const r = random();
-    // L1: %25 kalkan, %20 anahtar, %30 coin, %25 boş
+    // L1: %25 kalkan, %20 anahtar, %30 çay pulu, %25 boş
     if (r < 0.25) drop = "shield";
     else if (r < 0.45) drop = "key";
     else if (r < 0.75) drop = "coin";
@@ -246,7 +237,7 @@ function openChest(c){
   if (drop === "none")   c.despawnAt = now() + 5000;
 }
 
-/* L2 – telegraf/tuzağı/suluk */
+/* ========================= L2 İçerikleri ========================= */
 function l2SpawnFingerTelegraph(){ const p=randInWorld(120); l2_telegraphs.push({x:p.x,y:p.y, tHit:now()+1000, type:"finger"}); }
 function l2MaybeFinger(){ if (random()<0.01){ l2SpawnFingerTelegraph(); } }
 function l2UpdateTelegraphs(){
@@ -301,7 +292,7 @@ function l2OpenFlask(f){
   if (drop === "none")  f.despawnAt = now() + 5000;
 }
 
-/* Düşmanlar */
+/* ========================= Düşmanlar ========================= */
 function spawnEnemy(type){
   const side=floor(random(4)); let x=0,y=0;
   if (side===0){x=random(WORLD_W); y=-40;}
@@ -420,7 +411,7 @@ function updateEnemyBullets(dt){
   }
 }
 
-/* Oyuncu / Mermi */
+/* ========================= Oyuncu / Mermi ========================= */
 function effectiveDamage(amount, type){
   if (hasInvul()) return 0;
   if (hasShield()){
@@ -435,19 +426,24 @@ function damagePlayerTyped(amount, type){
   if (dmg<=0) return;
   hp-=dmg; if (hp<=0) startDeathSequence();
 }
-function shootPlayer_L1_angle(angle){
+
+/* L1 mermisi — 3 kıvrımlı damla (yön = hareket yönü) */
+function shootPlayer_L1_dir(dir){
   const t=now(); if (t-lastShoot<SHOOT_CD_MS) return; lastShoot=t;
+  const base = Math.atan2(dir.y, dir.x);
   const spreads=[-0.22,0,0.22];
   for (let s of spreads){
-    const a=angle+s;
+    const a=base+s;
     bullets.push({x:px,y:py,vx:cos(a)*BULLET_SPEED,vy:sin(a)*BULLET_SPEED,
       alive:true,life:1.2+random(-0.2,0.2),r:5+random(-1,1),curveA:random(60,100),curveF:random(4,8),phase:random(TWO_PI),
       ax:0,ay:0, wave:false, reflect:false});
   }
   if (sfxShoot && typeof sfxShoot.play==='function') sfxShoot.play();
 }
-function shootPlayer_L2_angle(angle){
+/* L2 mermisi — 45°’lik büyüyen yay (yön = hareket yönü) */
+function shootPlayer_L2_dir(dir){
   const t=now(); if (t-lastShoot<SHOOT_CD_MS) return; lastShoot=t;
+  const aim = Math.atan2(dir.y, dir.x);
   const offs = [-0.12, 0, 0.12];
   for (let o of offs){
     bullets.push({
@@ -455,21 +451,22 @@ function shootPlayer_L2_angle(angle){
       alive:true, life:1.1,
       r:14, grow:220,
       wave:true, arc:true,
-      a: angle + o,
+      a: aim + o,
       width: Math.PI/4, // 45°
       reflect:false
     });
   }
   if (l2_sfxShoot && typeof l2_sfxShoot.play==='function') l2_sfxShoot.play();
 }
-function handleShooting(){
-  if (paused || gameState!=="play") return;
-  if (!mouseIsPressed && !keyIsDown(32)) return; // Space de ateşler
-  const mw = getMouseWorld();
-  const ang = Math.atan2(mw.y - py, mw.x - px);
-  if (!isL2) shootPlayer_L1_angle(ang);
-  else       shootPlayer_L2_angle(ang);
+function shootPlayerAuto(){
+  const speed = Math.hypot(vx,vy);
+  if (speed < 5) return;
+  const dir = {x: vx/speed, y: vy/speed};
+  if (!isL2) shootPlayer_L1_dir(dir);
+  else       shootPlayer_L2_dir(dir);
 }
+
+/* Mermiler — Ayna hariç tek vuruşta öldür; ARC desteği */
 function updateBullets(dt){
   bullets = bullets.filter(b=>b.alive);
   const t=now()/1000;
@@ -552,7 +549,7 @@ function updateBullets(dt){
   }
 }
 
-/* Hava/şimşek */
+/* ========================= Şimşek & Hava ========================= */
 function maybeLightning(){
   if (!isL2 && random()<BASE_FLASH_CHANCE){
     const p=randInWorld(120); const r=random(AOE_RADIUS_BASE, AOE_RADIUS_BASE*2);
@@ -570,7 +567,7 @@ function maybeLightning(){
   lightStrikes=lightStrikes.filter(s=>now()<s.tFade);
 }
 
-/* Coin/loot/kapı */
+/* ========================= Coins / Loot / Door ========================= */
 function updateCoinsAndDoor(){
   for (let c of coins){
     if (!c.taken && dist2(px,py,c.x,c.y)<18*18){
@@ -609,21 +606,11 @@ function updateCoinsAndDoor(){
   }
 }
 
-/* Kamera */
+/* ========================= Kamera & Çizimler ========================= */
 function updateCamera(){
   centerCam = centerCam || createVector(WORLD_W/2, WORLD_H/2);
   centerCam.x=clamp(px,VIEW_W/2, WORLD_W-VIEW_W/2);
   centerCam.y=clamp(py,VIEW_H/2, WORLD_H-VIEW_H/2);
-}
-
-/* === BÜYÜK OPTİMİZASYON: Arka planı sadece viewport kadar çiz === */
-function drawBGImageCropped(img){
-  if (!img || !img.width){ background(12,14,18); return; }
-  const sx = clamp(centerCam.x - VIEW_W/2, 0, Math.max(0, WORLD_W - VIEW_W));
-  const sy = clamp(centerCam.y - VIEW_H/2, 0, Math.max(0, WORLD_H - VIEW_H));
-  const sw = Math.min(VIEW_W, WORLD_W);
-  const sh = Math.min(VIEW_H, WORLD_H);
-  image(img, sx, sy, sw, sh, sx, sy, sw, sh);
 }
 function drawRain(){
   stroke(THEME.rain[0],THEME.rain[1],THEME.rain[2],THEME.rain[3]);
@@ -637,14 +624,16 @@ function drawRain(){
 }
 function drawBG(){
   if (!isL2){
-    drawBGImageCropped((keyCount>=KEYS_NEEDED && bg1AltImg&&bg1AltImg.width) ? bg1AltImg : bg1Img);
+    if (keyCount>=KEYS_NEEDED && bg1AltImg&&bg1AltImg.width) image(bg1AltImg,0,0,WORLD_W,WORLD_H);
+    else if (bg1Img&&bg1Img.width) image(bg1Img,0,0,WORLD_W,WORLD_H);
+    else background(12,14,18);
   } else {
-    drawBGImageCropped((keyCount>=KEYS_NEEDED && l2_bg2&&l2_bg2.width) ? l2_bg2 : l2_bg1);
+    if (keyCount>=KEYS_NEEDED && l2_bg2&&l2_bg2.width) image(l2_bg2,0,0,WORLD_W,WORLD_H);
+    else if (l2_bg1&&l2_bg1.width) image(l2_bg1,0,0,WORLD_W,WORLD_H);
+    else background(10,12,16);
   }
   drawRain();
 }
-
-/* Çizimler */
 function drawLightning(){
   if (isL2) return;
   textAlign(CENTER,CENTER); fill(255,230,80);
@@ -731,14 +720,12 @@ function drawPlayer(){
     else { fill(200,200,240); ellipse(px,py,22,22); }
   }
 
-  // hareket oku
   const mv=Math.hypot(vx,vy);
   if (mv>1){ lastMoveDir.x=vx/mv; lastMoveDir.y=vy/mv; }
   const ax=px+lastMoveDir.x*24, ay=py+lastMoveDir.y*24;
   fill(THEME.moveArrow); noStroke();
   triangle(ax,ay, ax-lastMoveDir.y*8, ay+lastMoveDir.x*8, ax+lastMoveDir.y*8, ay-lastMoveDir.x*8);
 
-  // pusula (kapı ok)
   if (keyCount>=KEYS_NEEDED){
     const DZ = getDoorZone();
     const tx = DZ.x + DZ.w/2, ty = DZ.y + DZ.h/2;
@@ -748,20 +735,35 @@ function drawPlayer(){
   }
 }
 
-/* UI */
+/* ==== Joystick çizimi ==== */
+function drawJoystick(){
+  push(); resetMatrix();
+  noStroke();
+  fill(255,255,255, JOY.opacity*255);
+  circle(JOY.cx, JOY.cy, JOY.baseR*2);
+  const kx = JOY.cx + JOY.dx * JOY.baseR;
+  const ky = JOY.cy + JOY.dy * JOY.baseR;
+  fill(230,230,255, JOY.opacity*255);
+  circle(kx, ky, JOY.knobR*2);
+  pop();
+}
+
 function drawUI(){
   resetMatrix(); translate(0,0);
   if (bgBrightness!==1.0){
     const a=Math.abs(bgBrightness-1.0)*140; if (bgBrightness>1.0) fill(255,255,255,a); else fill(0,0,0,a);
     rect(0,0,VIEW_W,VIEW_H);
   }
+  // HP
   fill(40,40,50); rect(12,12,220,12,6);
   const r=clamp(hp/HP_MAX,0,1); fill( lerpColor(color(THEME.hpR), color(THEME.hpG), r) ); rect(12,12,220*r,12,6);
   if (hasShield()){ noFill(); stroke(THEME.shield); rect(10,10,224,16,6); noStroke(); }
   if (hasInvul()){ noFill(); stroke(0,180,255); rect(8,8,228,20,6); noStroke(); }
 
+  // Fullscreen düğmesi
   drawFullscreenButton();
 
+  // Metinler
   fill(THEME.uiWhite); textSize(14); textAlign(LEFT,TOP);
   text(`Anahtar: ${keyCount}/${KEYS_NEEDED}`, 12, 32);
   text(`Skor: ${scoreTotal}`, 12, 50);
@@ -773,16 +775,79 @@ function drawUI(){
   // Pause ikon
   fill(255);
   rect(VIEW_W-26,10,4,16,2); rect(VIEW_W-18,10,4,16,2);
+
+  // HUD ok
+  if (keyCount>=KEYS_NEEDED){
+    fill(THEME.doorArrow);
+    if (!isL2){ const tx=VIEW_W-40,ty=40; triangle(tx,ty, tx-14,ty-8, tx-14,ty+8); }
+    else { const tx=VIEW_W/2, ty=VIEW_H-36; triangle(tx,ty, tx-12,ty+18, tx+12,ty+18); }
+  }
+
+  // Joystick overlay
+  drawJoystick();
 }
 function drawFullscreenButton(){
-  const FS_BTN = {x: 242, y: 8, w: 28, h: 20};
   fill(235); rect(FS_BTN.x, FS_BTN.y, FS_BTN.w, FS_BTN.h, 4);
   fill(40); textAlign(CENTER,CENTER); textSize(14);
   text(fullscreen() ? "⤢" : "⛶", FS_BTN.x + FS_BTN.w/2, FS_BTN.y + FS_BTN.h/2 + 1);
 }
 
-/* p5 lifecycle */
+function drawPauseOverlay(){
+  fill(0,180); rect(0,0,VIEW_W,VIEW_H);
+  fill(255); textAlign(CENTER,TOP); textSize(20); text("Duraklatıldı", VIEW_W/2, 24);
+  textSize(14); textAlign(LEFT,TOP); fill(255);
+  text("Ses (master)", 40, 80);
+  drawButton({x:40,y:100,w:28,h:20},"-"); drawButton({x:212,y:100,w:28,h:20},"+");
+  fill(220); rect(72,100,136,8,4); fill(255); circle(72+clamp(masterVol,0,1)*136,104,10);
+
+  fill(255); text("Parlaklık", 40, 140);
+  drawButton({x:40,y:160,w:28,h:20},"-"); drawButton({x:212,y:160,w:28,h:20},"+");
+  fill(220); rect(72,160,136,8,4); const bn=clamp((bgBrightness-0.5)/1.0,0,1); fill(255); circle(72+bn*136,164,10);
+
+  text(`Süre: ${nf(floor(timeLeft/60),2)}:${nf(floor(timeLeft%60),2)}`, 40, 210);
+  text(`Anahtar: ${keyCount}/${KEYS_NEEDED}`, 40, 230);
+  text(`Skor: ${scoreTotal}`, 40, 250);
+
+  drawButton({x:40,y:290,w:120,h:30},"Menüye Dön", true);
+}
+function drawButton(r,label){ fill(255); rect(r.x,r.y,r.w,r.h,6); fill(0); textAlign(CENTER,CENTER); text(label, r.x+r.w/2, r.y+r.h/2); }
+function drawMenus(){
+  background(10,12,16);
+  splashAlpha += 0.02*splashFadeDir; if (splashAlpha>1){splashAlpha=1;splashFadeDir=-1;} if (splashAlpha<0.2){splashAlpha=0.2;splashFadeDir=1;}
+  if (splashImg&&splashImg.width){
+    imageMode(CENTER); tint(255,255*splashAlpha);
+    const maxW=VIEW_W*0.8,maxH=VIEW_H*0.7, iw=splashImg.width, ih=splashImg.height, sc=Math.min(maxW/iw,maxH/ih);
+    image(splashImg, VIEW_W/2, VIEW_H/2-20, iw*sc, ih*sc); noTint();
+  }
+  fill(0); textAlign(CENTER,CENTER); textSize(32); text("Storm Night: Tea Runner", VIEW_W/2, VIEW_H/2+96);
+  textSize(14); text("Başlamak için Tıkla/Dokun", VIEW_W/2, VIEW_H/2+136);
+  textSize(12); text("Joystick ile hareket • Otomatik ateş (1sn) • ⛶ tam ekran", VIEW_W/2, VIEW_H/2+160);
+}
+function drawLevelTransition(){ background(0); fill(255); textAlign(CENTER,CENTER); textSize(26); text(`Level ${level+2}`, VIEW_W/2, VIEW_H/2); }
+function drawDeathCinematic(){
+  const el=(now()-deathStart)/1000;
+  if (deathPhase==="zoom"){
+    zoomScale=Math.min(1.25, 1 + el*0.625);
+    if (zoomScale>=1.25){ deathPhase="gif"; deathStart=now(); }
+    push(); translate(VIEW_W/2, VIEW_H/2); scale(zoomScale);
+    translate(-px + (centerCam.x - VIEW_W/2), -py + (centerCam.y - VIEW_H/2));
+    drawBG(); if (!isL2) drawThorns(); drawChests(); drawL2Flasks(); drawEnemiesAndBullets(); drawPlayer(); pop();
+  } else {
+    background(0); imageMode(CENTER);
+    const img = isL2 ? l2_death : deathL1;
+    if (img&&img.width){ const iw=img.width, ih=img.height, sc=Math.max(VIEW_W/iw, VIEW_H/ih); image(img, VIEW_W/2, VIEW_H/2, iw*sc, ih*sc); }
+    else { fill(255); textAlign(CENTER,CENTER); textSize(24); text("Öldünüz", VIEW_W/2, VIEW_H/2); }
+    if (el>=4){ gameState="gameover"; deathPhase=null;
+      if (musicBg && typeof musicBg.setVolume==='function') musicBg.setVolume(masterVol*0.6,0.2);
+      if (l2_musicBg && typeof l2_musicBg.setVolume==='function') l2_musicBg.setVolume(masterVol*0.6,0.2);
+      updateBest();
+    }
+  }
+}
+
+/* ========================= p5 lifecycle ========================= */
 function preload(){
+  // IMG
   try{ splashImg     = loadImage('assets/img/splash.png'); }catch(e){}
   try{ bg1Img        = loadImage('assets/img/bg1.png'); }catch(e){}
   try{ bg1AltImg     = loadImage('assets/img/bg1_alt.png'); }catch(e){}
@@ -795,12 +860,14 @@ function preload(){
   try{ chestClosedImg= loadImage('assets/img/chest_closed.png'); }catch(e){}
   try{ chestOpenImg  = loadImage('assets/img/chest_open.png'); }catch(e){}
 
+  // L1 ölüm görseli (png yoksa gif’e fallback)
   try{
     deathL1 = loadImage('assets/img/death_l1.png', ()=>{}, ()=>{
       try{ deathL1 = loadImage('assets/img/death_l1.gif'); }catch(e){}
     });
   }catch(e){}
 
+  // L2 görseller
   try{ l2_bg1   = loadImage('assets/img/l2_bg1.png'); }catch(e){}
   try{ l2_bg2   = loadImage('assets/img/l2_bg2.png'); }catch(e){}
   try{ l2_trap  = loadImage('assets/img/l2_trap.png'); }catch(e){}
@@ -819,6 +886,7 @@ function preload(){
     });
   }catch(e){}
 
+  // AUDIO (WAV) — guard’lı
   try{ musicBg     = loadSound('assets/audio/bg_music.wav'); }catch(e){}
   try{ sfxShoot    = loadSound('assets/audio/shoot.wav'); }catch(e){}
   try{ sfxDoor     = loadSound('assets/audio/door.wav'); }catch(e){}
@@ -831,32 +899,23 @@ function preload(){
 function setup(){
   computeCanvasSize();
   createCanvas(VIEW_W, VIEW_H);
-  pixelDensity(1);
-  noSmooth();
-  frameRate(60);
-  fitCanvasCSS();
-
   centerCam=createVector(WORLD_W/2, WORLD_H/2);
+  applyJoystickLayout();
   try{ bestTotal=Number(localStorage.getItem("tea_runner_best")||"0"); }catch(e){}
 }
-function windowResized(){
-  computeCanvasSize();
-  resizeCanvas(VIEW_W, VIEW_H);
-  fitCanvasCSS();
-}
+function windowResized(){ computeCanvasSize(); resizeCanvas(VIEW_W, VIEW_H); applyJoystickLayout(); }
 
-/* Akış */
-let lastFrameMillis=0;
 function startGame(){
   try{ if (getAudioContext && getAudioContext() && getAudioContext().state!=='running') getAudioContext().resume(); }catch(e){}
-  showSplash = false;
   chapter=0; scoreTotal=0; level=0; resetLevel(); gameState="play"; lastFrameMillis=millis();
 
+  // masterVolume guard
   if (typeof masterVolume === 'function') masterVolume(masterVol);
 
   if (musicBg && typeof musicBg.setLoop==='function'){
     musicBg.setLoop(true);
     if (typeof musicBg.setVolume==='function') musicBg.setVolume(masterVol*0.6);
+    // 5sn'lik WAV loop: (startTime, rate, amp, cueStart, duration)
     if (typeof musicBg.loop==='function'){
       musicBg.loop(0,1,masterVol*0.6,0,5.0);
       if (typeof musicBg.onended==='function'){
@@ -866,14 +925,18 @@ function startGame(){
   }
 }
 
+let lastFrameMillis=0;
 function draw(){
   const ms=millis(), dt=lastFrameMillis? (ms-lastFrameMillis)/1000:0.016; lastFrameMillis=ms;
+
+  if (wasFullscreen !== fullscreen()){ wasFullscreen = fullscreen(); applyJoystickLayout(); }
 
   if (gameState==="menu"){ drawMenus(); return; }
   if (gameState==="levelTransition"){
     drawLevelTransition();
     if ((now()-transitionStart)>=2000){
       if (level===0){
+        // L2’ye geçerken müzik değişimi (guard’lı)
         if (musicBg && typeof musicBg.stop==='function') musicBg.stop();
         if (l2_musicBg && typeof l2_musicBg.setLoop==='function'){
           l2_musicBg.setLoop(true);
@@ -891,23 +954,28 @@ function draw(){
     return;
   }
   if (gameState==="gameover"){ drawGameOver(); return; }
+
   if (paused){ drawPauseWorld(); drawPauseOverlay(); return; }
   if (deathPhase){ drawDeathCinematic(); return; }
 
   if (timeLeft>0){ timeLeft-=dt; if (timeLeft<=0){ timeLeft=0; startDeathSequence(); } }
 
-  // Hareket — WASD / ok
+  // Giriş
   let ax=0,ay=0;
-  if (keyIsDown(65) || keyIsDown(37)) ax-=1;
-  if (keyIsDown(68) || keyIsDown(39)) ax+=1;
-  if (keyIsDown(87) || keyIsDown(38)) ay-=1;
-  if (keyIsDown(83) || keyIsDown(40)) ay+=1;
+  if (JOY.active){ ax = JOY.dx; ay = JOY.dy; }
+  else {
+    if (keyIsDown(65) || keyIsDown(37)) ax-=1;
+    if (keyIsDown(68) || keyIsDown(39)) ax+=1;
+    if (keyIsDown(87) || keyIsDown(38)) ay-=1;
+    if (keyIsDown(83) || keyIsDown(40)) ay+=1;
+  }
   if (now()<l2_trapHold.until){ ax=0; ay=0; }
   let len=Math.hypot(ax,ay); if (len>1){ ax/=len; ay/=len; }
   vx=(ax)*PLAYER_SPEED; vy=(ay)*PLAYER_SPEED;
   px+=vx*dt; py+=vy*dt; worldClamp();
 
-  handleShooting();
+  // Otomatik ateş
+  if (now()-lastAutoShot >= AUTO_SHOOT_MS){ lastAutoShot = now(); shootPlayerAuto(); }
 
   if (!isL2) trySpawnChest(dt); else { l2MaybeFinger(); l2UpdateTelegraphs(); l2UpdateTraps(); }
   updateEnemies(dt);
@@ -931,53 +999,15 @@ function draw(){
     else       { if (l2_sfxDoor && typeof l2_sfxDoor.play==='function') l2_sfxDoor.play(); }
   }
 }
-
-/* Menü/overlay */
-function drawMenus(){
-  background(10,12,16);
-  splashAlpha += 0.02*splashFadeDir; 
-  if (splashAlpha>1){splashAlpha=1;splashFadeDir=-1;}
-  if (splashAlpha<0.2){splashAlpha=0.2;splashFadeDir=1;}
-
-  if (showSplash && splashImg && splashImg.width){
-    imageMode(CENTER); tint(255,255*splashAlpha);
-    const maxW=VIEW_W*0.8,maxH=VIEW_H*0.7, iw=splashImg.width, ih=splashImg.height, sc=Math.min(maxW/iw,maxH/ih);
-    image(splashImg, VIEW_W/2, VIEW_H/2-20, iw*sc, ih*sc); noTint();
-  }
-  fill(0); textAlign(CENTER,CENTER); textSize(32); text("Storm Night: Tea Runner", VIEW_W/2, VIEW_H/2+96);
-  textSize(14); text("Başlamak için Tıkla", VIEW_W/2, VIEW_H/2+136);
-  textSize(12); text("WASD hareket • Mouse ile nişan • Sol tık/Space ateş", VIEW_W/2, VIEW_H/2+160);
-}
-function drawLevelTransition(){ background(0); fill(255); textAlign(CENTER,CENTER); textSize(26); text(`Level ${level+2}`, VIEW_W/2, VIEW_H/2); }
-
 function drawPauseWorld(){
   push(); translate(-centerCam.x+VIEW_W/2, -centerCam.y+VIEW_H/2);
   drawBG(); if (!isL2){ drawThorns(); drawLightning(); drawChests(); } else { drawL2Flasks(); drawL2Telegraphs(); }
   drawCoins(); drawLoots(); drawEnemiesAndBullets(); drawPlayer(); pop(); drawUI();
 }
-function drawPauseOverlay(){
-  fill(0,180); rect(0,0,VIEW_W,VIEW_H);
-  fill(255); textAlign(CENTER,TOP); textSize(20); text("Duraklatıldı", VIEW_W/2, 24);
-  textSize(14); textAlign(LEFT,TOP); fill(255);
-  text("Ses (master)", 40, 80);
-  drawButton({x:40,y:100,w:28,h:20},"-"); drawButton({x:212,y:100,w:28,h:20},"+");
-  fill(220); rect(72,100,136,8,4); fill(255); circle(72+clamp(masterVol,0,1)*136,104,10);
 
-  fill(255); text("Parlaklık", 40, 140);
-  drawButton({x:40,y:160,w:28,h:20},"-"); drawButton({x:212,y:160,w:28,h:20},"+");
-  fill(220); rect(72,160,136,8,4); const bn=clamp((bgBrightness-0.5)/1.0,0,1); fill(255); circle(72+bn*136,164,10);
-
-  text(`Süre: ${nf(floor(timeLeft/60),2)}:${nf(floor(timeLeft%60),2)}`, 40, 210);
-  text(`Anahtar: ${keyCount}/${KEYS_NEEDED}`, 40, 230);
-  text(`Skor: ${scoreTotal}`, 40, 250);
-
-  drawButton({x:40,y:290,w:120,h:30},"Menüye Dön", true);
-}
-function drawButton(r,label){ fill(255); rect(r.x,r.y,r.w,r.h,6); fill(0); textAlign(CENTER,CENTER); text(label, r.x+r.w/2, r.y+r.h/2); }
-
-/* Input */
+/* ========================= Input ========================= */
 function isPauseIconHit(x,y){ return (x>=VIEW_W-30 && x<=VIEW_W-10 && y>=8 && y<=30); }
-function isFullscreenBtnHit(x,y){ return (x>=242 && x<=242+28 && y>=8 && y<=28); }
+function isFullscreenBtnHit(x,y){ return (x>=FS_BTN.x && x<=FS_BTN.x+FS_BTN.w && y>=FS_BTN.y && y<=FS_BTN.y+FS_BTN.h); }
 
 function mousePressed(){
   const x=mouseX, y=mouseY;
@@ -986,25 +1016,104 @@ function mousePressed(){
   if (gameState==="gameover"){ startGame(); return; }
 
   if (isFullscreenBtnHit(x,y)){ toggleFullscreen(); return; }
+
   if (isPauseIconHit(x,y) && !deathPhase){
     paused=!paused; const vol=masterVol*(paused?0.3:0.6);
     if (musicBg && typeof musicBg.setVolume==='function') musicBg.setVolume(vol,0.2);
     if (l2_musicBg && typeof l2_musicBg.setVolume==='function') l2_musicBg.setVolume(vol,0.2);
     return;
   }
-}
-function keyPressed(){ if (key === ' '){ /* Space: ateş sürekli basılı iken handleShooting() */ } }
 
-/* Ölüm / Game Over — basit fade (fonksiyon tanımlı kalsın) */
-function startDeathSequence(){ deathPhase="zoom"; deathStart=now(); }
-function drawDeathCinematic(){
-  const elapsed = now()-deathStart;
-  fill(0,180); rect(0,0,VIEW_W,VIEW_H);
-  if (elapsed>2000){ deathPhase=null; gameState="gameover"; }
+  if (paused){
+    if (x>=40&&x<=68&&y>=100&&y<=120){ masterVol=clamp(masterVol-0.1,0,1); if (typeof masterVolume==='function') masterVolume(masterVol);
+      if (musicBg && typeof musicBg.setVolume==='function') musicBg.setVolume(masterVol*0.6);
+      if (l2_musicBg && typeof l2_musicBg.setVolume==='function') l2_musicBg.setVolume(masterVol*0.6); }
+    if (x>=212&&x<=240&&y>=100&&y<=120){ masterVol=clamp(masterVol+0.1,0,1); if (typeof masterVolume==='function') masterVolume(masterVol);
+      if (musicBg && typeof musicBg.setVolume==='function') musicBg.setVolume(masterVol*0.6);
+      if (l2_musicBg && typeof l2_musicBg.setVolume==='function') l2_musicBg.setVolume(masterVol*0.6); }
+    if (x>=40&&x<=68&&y>=160&&y<=180){ const v=clamp((bgBrightness-0.5)/1.0 - 0.1,0,1); bgBrightness=0.5+v*1.0; }
+    if (x>=212&&x<=240&&y>=160&&y<=180){ const v=clamp((bgBrightness-0.5)/1.0 + 0.1,0,1); bgBrightness=0.5+v*1.0; }
+    if (x>=40&&x<=160&&y>=290&&y<=320){ paused=false; gameState="menu";
+      if (musicBg && typeof musicBg.stop==='function') musicBg.stop();
+      if (l2_musicBg && typeof l2_musicBg.stop==='function') l2_musicBg.stop(); }
+    return;
+  }
+
+  // Joystick etkinleştir (mouse)
+  const dx = x - JOY.cx, dy = y - JOY.cy;
+  if (dx*dx + dy*dy <= (JOY.baseR*JOY.baseR)){
+    JOY.active = true; JOY.id = -1;
+    const d = Math.hypot(dx,dy) || 1;
+    JOY.dx = dx / Math.max(d, JOY.baseR);
+    JOY.dy = dy / Math.max(d, JOY.baseR);
+  }
+}
+function mouseDragged(){
+  if (JOY.active){
+    const dx = mouseX - JOY.cx, dy = mouseY - JOY.cy;
+    const d = Math.hypot(dx,dy) || 1;
+    const lim = Math.max(d, JOY.baseR);
+    JOY.dx = clamp(dx/lim, -1, 1);
+    JOY.dy = clamp(dy/lim, -1, 1);
+  }
+}
+function mouseReleased(){
+  if (JOY.active && JOY.id===-1){ JOY.active=false; JOY.dx=0; JOY.dy=0; }
+}
+
+function touchStarted(){
+  if (gameState==="menu"){ startGame(); return false; }
+  const touchesArr = touches || [];
+  for (let t of touchesArr){
+    if (isFullscreenBtnHit(t.x, t.y)){ toggleFullscreen(); return false; }
+    if (isPauseIconHit(t.x, t.y) && !deathPhase){
+      paused=!paused; const vol=masterVol*(paused?0.3:0.6);
+      if (musicBg && typeof musicBg.setVolume==='function') musicBg.setVolume(vol,0.2);
+      if (l2_musicBg && typeof l2_musicBg.setVolume==='function') l2_musicBg.setVolume(vol,0.2);
+      return false;
+    }
+    const dx = t.x - JOY.cx, dy = t.y - JOY.cy;
+    if (dx*dx + dy*dy <= (JOY.baseR*JOY.baseR)){
+      JOY.active=true; JOY.id=t.id;
+      const d=Math.hypot(dx,dy)||1;
+      JOY.dx = dx / Math.max(d, JOY.baseR);
+      JOY.dy = dy / Math.max(d, JOY.baseR);
+      break;
+    }
+  }
+  return false;
+}
+function touchMoved(){
+  const touchesArr = touches || [];
+  if (!JOY.active) return false;
+  for (let t of touchesArr){
+    if (t.id===JOY.id){
+      const dx = t.x - JOY.cx, dy = t.y - JOY.cy;
+      const d=Math.hypot(dx,dy)||1; const lim=Math.max(d, JOY.baseR);
+      JOY.dx = clamp(dx/lim, -1, 1);
+      JOY.dy = clamp(dy/lim, -1, 1);
+      break;
+    }
+  }
+  return false;
+}
+function touchEnded(){
+  const touchesArr = touches || [];
+  let still=false;
+  for (let t of touchesArr){ if (t.id===JOY.id){ still=true; break; } }
+  if (!still && JOY.active){ JOY.active=false; JOY.dx=0; JOY.dy=0; }
+  return false;
+}
+
+/* ========================= Ölüm / Game Over ========================= */
+function startDeathSequence(){
+  deathPhase="zoom"; deathStart=now(); zoomScale=1;
+  if (musicBg && typeof musicBg.setVolume==='function') musicBg.setVolume(masterVol*0.3,0.2);
+  if (l2_musicBg && typeof l2_musicBg.setVolume==='function') l2_musicBg.setVolume(masterVol*0.3,0.2);
 }
 function drawGameOver(){
   resetMatrix(); background(10,12,16); fill(235); textAlign(CENTER,CENTER); textSize(32);
   text("OYUN BİTTİ", VIEW_W/2, VIEW_H/2-60);
   textSize(16); text(`Skor: ${scoreTotal}  |  Best: ${bestTotal}`, VIEW_W/2, VIEW_H/2-8);
-  text("Yeniden başlamak için Tıkla", VIEW_W/2, VIEW_H/2+40);
+  text("Yeniden başlamak için Dokun/Tıkla", VIEW_W/2, VIEW_H/2+40);
 }
