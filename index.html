@@ -1,39 +1,49 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
   <meta charset="utf-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
-  />
   <title>Storm Night: Tea Runner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Mobil uyumluluk -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#0a0c10" />
-
-  <!-- p5 çekirdek + p5.sound (sıra ÖNEMLİ) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.sound.min.js"></script>
+  <!-- (Opsiyonel) Favicon: 404 uyarısını önler -->
+  <link rel="icon" href="assets/img/splash.png" />
 
   <style>
-    :root { color-scheme: dark; }
+    /* Sayfayı temiz ve merkezi tut */
     html, body {
-      margin: 0;
-      padding: 0;
       height: 100%;
-      background: #0a0c10;   /* menü/splash arka planı */
-      overflow: hidden;       /* mobilde kaydırmayı kapat */
-      touch-action: none;     /* joystick için istenmeyen kaydırmayı engelle */
-      -webkit-tap-highlight-color: transparent;
+      margin: 0;
+      background: #0a0c10;
+      color: #fff;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
-    canvas { display: block; }
+    /* Canvas'ı hem yatay hem dikey ortala */
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    canvas {
+      display: block;
+      image-rendering: pixelated; /* retro keskinlik */
+      /* İstersen kenarlık/çerçeve:
+      box-shadow: 0 10px 30px rgba(0,0,0,.4);
+      border-radius: 10px;
+      */
+    }
   </style>
+
+  <!-- p5 core + p5.sound (SIRA ÖNEMLİ) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/p5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/addons/p5.sound.min.js"></script>
 </head>
 <body>
-  <!-- Oyunun ana kodu (repo kökünde sketch.js olmalı) -->
-  <script src="sketch.js?v=5"></script>
+  <!-- Oyun kodu -->
+  <script src="sketch.js?v=7"></script>
+
+  <!-- No-JS uyarısı (isteğe bağlı) -->
+  <noscript style="position:fixed;left:0;right:0;bottom:0;background:#111;color:#fff;padding:10px;text-align:center;">
+    Bu oyunu oynamak için tarayıcınızda JavaScript açık olmalıdır.
+  </noscript>
 </body>
 </html>
-
