@@ -1,6 +1,6 @@
 /* ================== Storm Night: Tea Runner — ASSETS VERSION (WAV+IMG) ==================
    - Dünya (harita): 2000×1400, Canvas: responsive (pencere boyutu / fullscreen)
-   - Joystick: y≈0.82H, daha saydam (~%35)
+   - Joystick: y≈0.82H, saydamlık ≈ %35
    - Otomatik ateş: 1 sn arayla, hareket yönüne
    - Pause: sağ üst "II" ikonuna dokun/tıkla
    - Fullscreen: HP barının yanında ⛶ butonu (tık/dokun → tam ekran aç/kapa)
@@ -79,7 +79,7 @@ let keyCount=0, doorJustActivated=false;
 let lastMoveDir={x:1,y:0};
 let deathPhase=null, deathStart=0, zoomScale=1;
 let splashAlpha=0, splashFadeDir=1;
-let showSplash = true;          // <--- Splash sadece menüde
+let showSplash = true;          // splash sadece menüde
 let bgBrightness=1.0, masterVol=0.8;
 let levelStartTime=0, waveClock=0;
 let transitionStart=0;
@@ -251,7 +251,7 @@ function l2UpdateTelegraphs(){
       }
     } else keep.push(g);
   }
-  l2_telegraphs.length=0; l2_telegraphs.push(...keep);
+  l2_telegraphs.length=0; l2_teleographs.push(...keep);
 }
 let l2_trapHold = {until:0, invisible:false};
 function l2UpdateTraps(){
@@ -911,7 +911,7 @@ function windowResized(){ computeCanvasSize(); resizeCanvas(VIEW_W, VIEW_H); app
 
 function startGame(){
   try{ if (getAudioContext && getAudioContext() && getAudioContext().state!=='running') getAudioContext().resume(); }catch(e){}
-  showSplash = false; // <--- menüden çıkınca splash çizilmesin
+  showSplash = false; // menüden çıkınca splash çizilmesin
   chapter=0; scoreTotal=0; level=0; resetLevel(); gameState="play"; lastFrameMillis=millis();
 
   // masterVolume guard
