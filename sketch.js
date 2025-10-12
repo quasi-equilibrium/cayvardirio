@@ -1,16 +1,25 @@
-/* ================== Storm Night: Tea Runner — Mouse Aim + WASD (BG Crop) ==================
-   En büyük optimizasyon: Arka plan yalnızca viewport kadar çizilir (9-arg image()).
-   - Hareket: WASD / yön tuşları
-   - Ateş: Mouse sol tuş / Space (mouse yönüne)
-   - Pause: sağ üst "II" ikonuna tıkla
+/* ================== Storm Night: Tea Runner — Mouse Aim + WASD (RenderScale + BG Crop) ==================
+   Büyük performans yamaları:
+   1) Dinamik çözünürlük: Masaüstünde canvas iç çözünürlüğünü %75'te render edip CSS ile büyütüyoruz.
+   2) Arka planı her karede tam değil, SADECE viewport kadar çiziyoruz (9 arg. image()).
+
+   - Hareket: WASD / Yön tuşları
+   - Ateş: Mouse sol tuş veya Space (mouse yönüne)
+   - Pause: sağ üst "II"
    - Fullscreen: HP barının yanında ⛶
 */
 
 const WORLD_W = 2000, WORLD_H = 1400;
-let VIEW_W, VIEW_H;
 
-/* Oyuncu %50 büyütüldü */
-const PLAYER_W = 36*1.5, PLAYER_H = 36*1.5;
+// Cihaz tespiti + render ölçeği (gerekirse 0.6–0.9 deneyebilirsin)
+const IS_MOBILE = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+const RENDER_SCALE = IS_MOBILE ? 1.0 : 0.75;
+
+let VIEW_W, VIEW_H;            // iç çözünürlük (canvas piksel)
+let CSS_W, CSS_H;              // ekranda görünen boyut (px)
+
+/* Boyutlar */
+const PLAYER_W = 36*1.5, PLAYER_H = 36*1.5;  // %50 büyük
 const SPOON_W  = 46, SPOON_H = 58;
 const ALIEN_W  = 42, ALIEN_H = 30;
 const GHOST_W  = 28*1.2, GHOST_H = 28*1.2;
@@ -19,6 +28,7 @@ const KEY_W = 28, KEY_H = 28;
 const COIN_W = 20*1.4, COIN_H = 20*1.4;
 const CHEST_W = 36, CHEST_H = 30;
 
+/* Oyun sabitleri */
 const PLAYER_SPEED = 160;
 const BULLET_SPEED = 480;
 const SHOOT_CD_MS  = 260;
@@ -40,8 +50,9 @@ const GUARANTEE_KEYS_WINDOW_L1 = 90;
 const GUARANTEE_KEYS_WINDOW_L2 = 120;
 const GUARANTEE_KEYS_COUNT     = 2;
 
-const ENEMY_SPEED_MULT = 0.95;
+const ENEMY_SPEED_MULT = 0.95;  // hızlar %5 az
 
+/* Tema */
 const THEME = {
   uiBlack: [0,0,0],
   uiWhite: [255,255,255],
@@ -74,7 +85,7 @@ let openedChestsKeysGiven=0, openedFlasksKeysGiven=0;
 let lightTelegraphs=[], lightStrikes=[];
 let keyCount=0, doorJustActivated=false;
 let lastMoveDir={x:1,y:0};
-let deathPhase=null, deathStart=0, zoomScale=1;
+let deathPhase=null, deathStart=0;
 let splashAlpha=0, splashFadeDir=1;
 let showSplash = true;
 let bgBrightness=1.0, masterVol=0.8;
@@ -95,7 +106,7 @@ let l2_bg1,l2_bg2,l2_trap,l2_finger,l2_nazar,l2_honey,l2_mirror,l2_swing,l2_beak
 let sfxShoot,sfxDoor,sfxLightning,musicBg;
 let l2_musicBg,l2_sfxShoot,l2_sfxDoor,l2_sfxFinger;
 
-/* Yardımcı */
+/* Yardımcılar */
 function clamp(v,a,b){ return Math.max(a, Math.min(b,v)); }
 function dist2(ax,ay,bx,by){ let dx=ax-bx, dy=ay-by; return dx*dx+dy*dy; }
 function now(){ return millis(); }
@@ -107,19 +118,20 @@ function worldClamp(){ px=clamp(px,20,WORLD_W-20); py=clamp(py,20,WORLD_H-20); }
 function toggleFullscreen(){
   const fs = !fullscreen();
   fullscreen(fs);
-  setTimeout(()=>{ computeCanvasSize(); resizeCanvas(VIEW_W, VIEW_H); }, 50);
+  setTimeout(()=>{ computeCanvasSize(); resizeCanvas(VIEW_W, VIEW_H); fitCanvasCSS(); }, 50);
 }
 function getDoorZone(){
   if (!isL2){ return { x: WORLD_W*0.8, y: 0, w: WORLD_W*0.2, h: WORLD_H*0.2 }; }
   else       { return { x: WORLD_W*0.4, y: WORLD_H*0.8, w: WORLD_W*0.2, h: WORLD_H*0.2 }; }
 }
 function getMouseWorld(){
+  // p5 mouseX/mouseY zaten canvas iç çözünürlüğünde gelir; ekstra ölçek gerekmiyor
   const camX = clamp(px, VIEW_W/2, WORLD_W - VIEW_W/2);
   const camY = clamp(py, VIEW_H/2, WORLD_H - VIEW_H/2);
   return { x: mouseX - (VIEW_W/2 - camX), y: mouseY - (VIEW_H/2 - camY) };
 }
 
-/* Level kontrol */
+/* Level akışı */
 function baseResetCommon(){
   const p=randInWorld(200); px=p.x; py=p.y; vx=vy=0; worldClamp();
   hp=HP_MAX; keyCount=0; doorJustActivated=false;
@@ -157,8 +169,20 @@ function updateBest(){
        bestTotal=Number(localStorage.getItem("tea_runner_best")||"0"); }catch(e){ bestTotal=bestTotal||0; }
 }
 
-/* Canvas */
-function computeCanvasSize(){ VIEW_W = windowWidth; VIEW_H = windowHeight; }
+/* Responsive + RenderScale */
+function computeCanvasSize(){
+  CSS_W = windowWidth;
+  CSS_H = windowHeight;
+  VIEW_W = Math.floor(CSS_W * RENDER_SCALE);
+  VIEW_H = Math.floor(CSS_H * RENDER_SCALE);
+}
+function fitCanvasCSS(){
+  const cnv = canvas || (this._renderer && this._renderer.canvas) || (window._renderer && window._renderer.canvas);
+  if (cnv){
+    cnv.style.width  = CSS_W + 'px';
+    cnv.style.height = CSS_H + 'px';
+  }
+}
 
 /* L1 – dikenler */
 function spawnThorns(n){
@@ -210,6 +234,7 @@ function openChest(c){
     drop = "key"; openedChestsKeysGiven++;
   } else {
     const r = random();
+    // L1: %25 kalkan, %20 anahtar, %30 coin, %25 boş
     if (r < 0.25) drop = "shield";
     else if (r < 0.45) drop = "key";
     else if (r < 0.75) drop = "coin";
@@ -264,6 +289,7 @@ function l2OpenFlask(f){
     drop = "key"; openedFlasksKeysGiven++;
   } else {
     const r = random();
+    // L2: %25 nazar, %15 anahtar, %30 ballı, %30 boş
     if (r < 0.25) drop = "nazar";
     else if (r < 0.40) drop = "key";
     else if (r < 0.70) drop = "honey";
@@ -430,7 +456,7 @@ function shootPlayer_L2_angle(angle){
       r:14, grow:220,
       wave:true, arc:true,
       a: angle + o,
-      width: Math.PI/4,
+      width: Math.PI/4, // 45°
       reflect:false
     });
   }
@@ -438,7 +464,7 @@ function shootPlayer_L2_angle(angle){
 }
 function handleShooting(){
   if (paused || gameState!=="play") return;
-  if (!mouseIsPressed && !keyIsDown(32)) return;
+  if (!mouseIsPressed && !keyIsDown(32)) return; // Space de ateşler
   const mw = getMouseWorld();
   const ang = Math.atan2(mw.y - py, mw.x - px);
   if (!isL2) shootPlayer_L1_angle(ang);
@@ -463,6 +489,7 @@ function updateBullets(dt){
     b.life-=dt; if (b.life<=0){ b.alive=false; continue; }
     if (!b.wave && (b.x<-50||b.y<-50||b.x>WORLD_W+50||b.y>WORLD_H+50)){ b.alive=false; continue; }
 
+    // Sandık/Suluk
     if (!isL2){
       for (let c of chests){
         if (!c.alive||c.open) continue;
@@ -493,6 +520,7 @@ function updateBullets(dt){
       }
     }
 
+    // Düşman çarpışma
     for (let e of enemies){
       if (!e.alive) continue;
       let hit=false;
@@ -588,15 +616,13 @@ function updateCamera(){
   centerCam.y=clamp(py,VIEW_H/2, WORLD_H-VIEW_H/2);
 }
 
-/* === EN BÜYÜK OPTİMİZASYON: Arka planı viewport kadar çiz === */
+/* === BÜYÜK OPTİMİZASYON: Arka planı sadece viewport kadar çiz === */
 function drawBGImageCropped(img){
   if (!img || !img.width){ background(12,14,18); return; }
-  // Dünya koordinatlarında görünen pencere
-  const sx = clamp(centerCam.x - VIEW_W/2, 0, max(0, WORLD_W - VIEW_W));
-  const sy = clamp(centerCam.y - VIEW_H/2, 0, max(0, WORLD_H - VIEW_H));
-  const sw = min(VIEW_W, WORLD_W);
-  const sh = min(VIEW_H, WORLD_H);
-  // Kaynak (sx,sy,sw,sh) → Hedef (dx,dy,dw,dh) aynı dünya dikdörtgenine
+  const sx = clamp(centerCam.x - VIEW_W/2, 0, Math.max(0, WORLD_W - VIEW_W));
+  const sy = clamp(centerCam.y - VIEW_H/2, 0, Math.max(0, WORLD_H - VIEW_H));
+  const sw = Math.min(VIEW_W, WORLD_W);
+  const sh = Math.min(VIEW_H, WORLD_H);
   image(img, sx, sy, sw, sh, sx, sy, sw, sh);
 }
 function drawRain(){
@@ -705,12 +731,14 @@ function drawPlayer(){
     else { fill(200,200,240); ellipse(px,py,22,22); }
   }
 
+  // hareket oku
   const mv=Math.hypot(vx,vy);
   if (mv>1){ lastMoveDir.x=vx/mv; lastMoveDir.y=vy/mv; }
   const ax=px+lastMoveDir.x*24, ay=py+lastMoveDir.y*24;
   fill(THEME.moveArrow); noStroke();
   triangle(ax,ay, ax-lastMoveDir.y*8, ay+lastMoveDir.x*8, ax+lastMoveDir.y*8, ay-lastMoveDir.x*8);
 
+  // pusula (kapı ok)
   if (keyCount>=KEYS_NEEDED){
     const DZ = getDoorZone();
     const tx = DZ.x + DZ.w/2, ty = DZ.y + DZ.h/2;
@@ -742,6 +770,7 @@ function drawUI(){
   const m=nf(floor(timeLeft/60),2), s=nf(floor(timeLeft%60),2);
   text(`Süre: ${m}:${s}`, VIEW_W-12, 10);
 
+  // Pause ikon
   fill(255);
   rect(VIEW_W-26,10,4,16,2); rect(VIEW_W-18,10,4,16,2);
 }
@@ -802,15 +831,22 @@ function preload(){
 function setup(){
   computeCanvasSize();
   createCanvas(VIEW_W, VIEW_H);
-  pixelDensity(1);     // (opsiyonel ama zarar vermez)
+  pixelDensity(1);
   noSmooth();
   frameRate(60);
+  fitCanvasCSS();
+
   centerCam=createVector(WORLD_W/2, WORLD_H/2);
   try{ bestTotal=Number(localStorage.getItem("tea_runner_best")||"0"); }catch(e){}
 }
-function windowResized(){ computeCanvasSize(); resizeCanvas(VIEW_W, VIEW_H); }
+function windowResized(){
+  computeCanvasSize();
+  resizeCanvas(VIEW_W, VIEW_H);
+  fitCanvasCSS();
+}
 
 /* Akış */
+let lastFrameMillis=0;
 function startGame(){
   try{ if (getAudioContext && getAudioContext() && getAudioContext().state!=='running') getAudioContext().resume(); }catch(e){}
   showSplash = false;
@@ -830,7 +866,6 @@ function startGame(){
   }
 }
 
-let lastFrameMillis=0;
 function draw(){
   const ms=millis(), dt=lastFrameMillis? (ms-lastFrameMillis)/1000:0.016; lastFrameMillis=ms;
 
@@ -861,6 +896,7 @@ function draw(){
 
   if (timeLeft>0){ timeLeft-=dt; if (timeLeft<=0){ timeLeft=0; startDeathSequence(); } }
 
+  // Hareket — WASD / ok
   let ax=0,ay=0;
   if (keyIsDown(65) || keyIsDown(37)) ax-=1;
   if (keyIsDown(68) || keyIsDown(39)) ax+=1;
@@ -957,13 +993,14 @@ function mousePressed(){
     return;
   }
 }
-function keyPressed(){ if (key === ' '){ /* Space: ateş sürekli basılıyken handleShooting() */ } }
+function keyPressed(){ if (key === ' '){ /* Space: ateş sürekli basılı iken handleShooting() */ } }
 
-/* Ölüm / Game Over */
-function startDeathSequence(){
-  deathPhase="zoom"; deathStart=now(); zoomScale=1;
-  if (musicBg && typeof musicBg.setVolume==='function') musicBg.setVolume(masterVol*0.3,0.2);
-  if (l2_musicBg && typeof l2_musicBg.setVolume==='function') l2_musicBg.setVolume(masterVol*0.3,0.2);
+/* Ölüm / Game Over — basit fade (fonksiyon tanımlı kalsın) */
+function startDeathSequence(){ deathPhase="zoom"; deathStart=now(); }
+function drawDeathCinematic(){
+  const elapsed = now()-deathStart;
+  fill(0,180); rect(0,0,VIEW_W,VIEW_H);
+  if (elapsed>2000){ deathPhase=null; gameState="gameover"; }
 }
 function drawGameOver(){
   resetMatrix(); background(10,12,16); fill(235); textAlign(CENTER,CENTER); textSize(32);
