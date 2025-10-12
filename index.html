@@ -1,15 +1,25 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.10/lib/p5.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.10/lib/addons/p5.sound.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="style.css">
-    <meta charset="utf-8" />
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>Storm Night: Tea Runner</title>
 
-  </head>
-  <body>
-    <main>
-    </main>
-    <script src="sketch.js"></script>
-  </body>
+  <!-- p5 çekirdek -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <!-- p5.sound mutlaka bundan sonra -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.sound.min.js"></script>
+
+  <!-- İsteğe bağlı: mobil safari ses için user gesture notu -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <style>
+    html,body{margin:0;height:100%;background:#0a0c10;overflow:hidden}
+    canvas{display:block}
+  </style>
+</head>
+<body>
+  <!-- oyunun JS'i en sonda -->
+  <script src="sketch.js"></script>
+</body>
 </html>
+
