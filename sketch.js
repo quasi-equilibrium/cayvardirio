@@ -4,7 +4,7 @@
    - Otomatik ateş: 1 sn arayla, hareket yönüne
    - Pause: sağ üst "II" ikonuna dokun/tıkla
    - Fullscreen: HP barının yanında ⛶ butonu (tık/dokun → tam ekran aç/kapa)
-   - p5.sound yoksa (yüklenmemişse) ses çağrıları guard'lı (oyun yine çalışır)
+   - p5.sound yoksa da oyun çalışır (ses çağrıları guard’lı)
 */
 
 /* === (1) Sabitler & Tema === */
@@ -79,6 +79,7 @@ let keyCount=0, doorJustActivated=false;
 let lastMoveDir={x:1,y:0};
 let deathPhase=null, deathStart=0, zoomScale=1;
 let splashAlpha=0, splashFadeDir=1;
+let showSplash = true;          // <--- Splash sadece menüde
 let bgBrightness=1.0, masterVol=0.8;
 let levelStartTime=0, waveClock=0;
 let transitionStart=0;
@@ -813,8 +814,11 @@ function drawPauseOverlay(){
 function drawButton(r,label){ fill(255); rect(r.x,r.y,r.w,r.h,6); fill(0); textAlign(CENTER,CENTER); text(label, r.x+r.w/2, r.y+r.h/2); }
 function drawMenus(){
   background(10,12,16);
-  splashAlpha += 0.02*splashFadeDir; if (splashAlpha>1){splashAlpha=1;splashFadeDir=-1;} if (splashAlpha<0.2){splashAlpha=0.2;splashFadeDir=1;}
-  if (splashImg&&splashImg.width){
+  splashAlpha += 0.02*splashFadeDir; 
+  if (splashAlpha>1){splashAlpha=1;splashFadeDir=-1;}
+  if (splashAlpha<0.2){splashAlpha=0.2;splashFadeDir=1;}
+
+  if (showSplash && splashImg && splashImg.width){
     imageMode(CENTER); tint(255,255*splashAlpha);
     const maxW=VIEW_W*0.8,maxH=VIEW_H*0.7, iw=splashImg.width, ih=splashImg.height, sc=Math.min(maxW/iw,maxH/ih);
     image(splashImg, VIEW_W/2, VIEW_H/2-20, iw*sc, ih*sc); noTint();
@@ -827,7 +831,7 @@ function drawLevelTransition(){ background(0); fill(255); textAlign(CENTER,CENTE
 function drawDeathCinematic(){
   const el=(now()-deathStart)/1000;
   if (deathPhase==="zoom"){
-    zoomScale=Math.min(1.25, 1 + el*0.625);
+    zoomScale=Math.min(1.25, 1 + el*0.625); // yumuşak zoom
     if (zoomScale>=1.25){ deathPhase="gif"; deathStart=now(); }
     push(); translate(VIEW_W/2, VIEW_H/2); scale(zoomScale);
     translate(-px + (centerCam.x - VIEW_W/2), -py + (centerCam.y - VIEW_H/2));
@@ -907,6 +911,7 @@ function windowResized(){ computeCanvasSize(); resizeCanvas(VIEW_W, VIEW_H); app
 
 function startGame(){
   try{ if (getAudioContext && getAudioContext() && getAudioContext().state!=='running') getAudioContext().resume(); }catch(e){}
+  showSplash = false; // <--- menüden çıkınca splash çizilmesin
   chapter=0; scoreTotal=0; level=0; resetLevel(); gameState="play"; lastFrameMillis=millis();
 
   // masterVolume guard
