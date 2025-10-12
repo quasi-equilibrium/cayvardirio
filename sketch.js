@@ -3,21 +3,18 @@
    /index.html
    /sketch.js
    /assets/
-     /img/ ... (splash.png, bg1.png, bg1_alt.png, l2_bg1.png, l2_bg2.png,
-                player.png, spoon.png, ghost.png, alien.png, key.png, coin.png,
-                chest_closed.png, chest_open.png,
-                l2_trap.png, l2_finger.png, l2_nazar.png, l2_honey.png,
-                l2_mirror.png, l2_swing.png, l2_beak.png, l2_player.png,
-                l2_death.png (ya da l2_death.gif), l2_flask_closed.png, l2_flask_open.png,
-                death_l1.gif)
-     /audio/ ... (bg_music.wav, shoot.wav, door.wav, lightning.wav,
-                  l2_bg_music.wav, l2_shoot.wav, l2_door.wav, l2_finger.wav)
+     /img/ (splash.png, bg1.png, bg1_alt.png, l2_bg1.png, l2_bg2.png,
+            player.png, spoon.png, ghost.png, alien.png, key.png, coin.png,
+            chest_closed.png, chest_open.png,
+            l2_trap.png, l2_finger.png, l2_nazar.png, l2_honey.png,
+            l2_mirror.png, l2_swing.png, l2_beak.png, l2_player.png,
+            l2_death.png (ya da .gif), l2_flask_closed.png, l2_flask_open.png,
+            death_l1.gif)
+     /audio/ (bg_music.wav, shoot.wav, door.wav, lightning.wav,
+              l2_bg_music.wav, l2_shoot.wav, l2_door.wav, l2_finger.wav)
 ============================================================================== */
 
-const PATH = {
-  img: "assets/img/",
-  audio: "assets/audio/"
-};
+const PATH = { img: "assets/img/", audio: "assets/audio/" };
 
 /* === (1) Sabitler & Tema === */
 const WORLD_W = 2000, WORLD_H = 1400;
@@ -29,7 +26,7 @@ const ALIEN_W  = 42, ALIEN_H = 30;
 const GHOST_W  = 28*1.2, GHOST_H = 28*1.2;
 
 const KEY_W = 28, KEY_H = 28;
-const COIN_W = 20*1.4, COIN_H = 20*1.4;
+theconst COIN_W = 20*1.4, COIN_H = 20*1.4;
 const CHEST_W = 36, CHEST_H = 30;
 
 const PLAYER_SPEED = 160;
@@ -118,7 +115,9 @@ function randInWorld(m=80){ return {x:random(m,WORLD_W-m), y:random(m,WORLD_H-m)
 function worldClamp(){ px=clamp(px,20,WORLD_W-20); py=clamp(py,20,WORLD_H-20); }
 function screenToWorldX(x){ return x + (centerCam.x - VIEW_W/2); }
 function screenToWorldY(y){ return y + (centerCam.y - VIEW_H/2); }
+function setGlobalVolume(v){ try{ if (typeof masterVolume==='function') masterVolume(v); }catch(e){} }
 
+// Çıkış kapısı bölgesi
 function getDoorZone(){
   if (!isL2){ // L1: sağ-üst %20x%20
     return { x: WORLD_W*0.8, y: 0, w: WORLD_W*0.2, h: WORLD_H*0.2 };
@@ -311,16 +310,17 @@ function l2OpenFlask(f){
 
 /* ========================= Düşmanlar ========================= */
 function spawnEnemy(type){
-  const side=floor(random(4)); let x=0,y=0;
-  if (side===0){x=random(WORLD_W); y=-40;}
-  if (side===1){x=random(WORLD_W); y=WORLD_H+40;}
-  if (side===2){x=-40; y=random(WORLD_H);}
-  if (side===3){x=WORLD_W+40; y=random(WORLD_H);}
+  // oyuncuya çok yakın doğmasın
+  let tries = 0, x=0, y=0;
+  do{
+    const side = floor(random(4));
+    if (side===0){ x=random(WORLD_W); y=-40; }
+    if (side===1){ x=random(WORLD_W); y=WORLD_H+40; }
+    if (side===2){ x=-40; y=random(WORLD_H); }
+    if (side===3){ x=WORLD_W+40; y=random(WORLD_H); }
+    tries++;
+  } while (tries < 10 && dist2(x,y,px,py) < (320*320));
   enemies.push({type, x, y, vx:0, vy:0, cd:0, alive:true});
-}
-function enemyKnockbackFrom(x,y, mul=40){
-  const dx=px-x, dy=py-y; const d=max(1,Math.hypot(dx,dy));
-  px += (dx/d)*mul; py += (dy/d)*mul; worldClamp();
 }
 function updateEnemies(dt){
   enemies = enemies.filter(e=>e.alive);
@@ -349,7 +349,7 @@ function updateEnemies(dt){
 
     if (!isL2){
       if (e.type==="ghost"){
-        const sp=140; e.x+=(dx/d)*sp*dt; e.y+=(dy/d)*sp*dt;
+        const sp=120; e.x+=(dx/d)*sp*dt; e.y+=(dy/d)*sp*dt;
         if (dist2(px,py,e.x,e.y) < 22*22){
           if(!hasInvul()) damagePlayerTyped(DMG_GHOST,"ghost");
           enemyKnockbackFrom(e.x,e.y);
@@ -400,6 +400,10 @@ function updateEnemies(dt){
     e.x=clamp(e.x,-60,WORLD_W+60);
     e.y=clamp(e.y,-60,WORLD_H+60);
   }
+}
+function enemyKnockbackFrom(x,y, mul=40){
+  const dx=px-x, dy=py-y; const d=max(1,Math.hypot(dx,dy));
+  px += (dx/d)*mul; py += (dy/d)*mul; worldClamp();
 }
 function shootEnemyBullet(x,y,tx,ty){
   const dx=tx-x, dy=ty-y, d=max(1,Math.hypot(dx,dy));
@@ -810,7 +814,8 @@ function drawMenus(){
   if (splashImg&&splashImg.width){
     imageMode(CENTER); tint(255,255*splashAlpha);
     const maxW=VIEW_W*0.8,maxH=VIEW_H*0.7, iw=splashImg.width, ih=splashImg.height, sc=Math.min(maxW/iw,maxH/ih);
-    image(splashImg, VIEW_W/2, VIEW_H/2-20, iw*sc, ih*sc); noTint();
+    image(splashImg, VIEW_W/2, VIEW_H/2-20, iw*sc, ih*sc);
+    noTint(); blendMode(BLEND);
   }
   fill(0); textAlign(CENTER,CENTER); textSize(32); text("Storm Night: Tea Runner", VIEW_W/2, VIEW_H/2+96);
   textSize(14); text("Başlamak için Tıkla veya Space", VIEW_W/2, VIEW_H/2+136);
@@ -865,12 +870,10 @@ function preload(){
   l2_swing       = loadImage(PATH.img+"l2_swing.png");
   l2_beak        = loadImage(PATH.img+"l2_beak.png");
   l2_player      = loadImage(PATH.img+"l2_player.png");
-  // Ölüm görseli: png varsa onu, yoksa gif’i okuyalım (p5 loadImage gif'in ilk karesini çizer)
   try{ l2_death  = loadImage(PATH.img+"l2_death.png"); }catch(e){}
   try{ if (!l2_death) l2_death = loadImage(PATH.img+"l2_death.gif"); }catch(e){}
   l2_flaskC      = loadImage(PATH.img+"l2_flask_closed.png");
   l2_flaskO      = loadImage(PATH.img+"l2_flask_open.png");
-  // L1 için ölüm gif
   try{ deathGifL1 = loadImage(PATH.img+"death_l1.gif"); }catch(e){}
 
   // Sesler
@@ -886,6 +889,9 @@ function preload(){
 }
 function setup(){
   createCanvas(VIEW_W, VIEW_H);
+  pixelDensity(1);   // ghosting azalt
+  frameRate(60);
+  noSmooth();        // smear azalt
   centerCam=createVector(WORLD_W/2, WORLD_H/2);
   try{ bestTotal=Number(localStorage.getItem("tea_runner_best")||"0"); }catch(e){}
 }
@@ -893,7 +899,7 @@ function startGame(){
   try{ if (getAudioContext().state!=='running') getAudioContext().resume(); }catch(e){}
   chapter=0; scoreTotal=0; level=0; resetLevel(); gameState="play"; lastFrameMillis=millis();
   if (musicBg){
-    masterVolume(masterVol);
+    setGlobalVolume(masterVol);
     musicBg.setLoop(true);
     musicBg.setVolume(masterVol*0.6);
     musicBg.loop(0,1,masterVol*0.6,0,5.0);
@@ -903,6 +909,14 @@ function startGame(){
 
 let lastFrameMillis=0;
 function draw(){
+  // --- ghosting fix: kare başı sert reset ---
+  resetMatrix();
+  blendMode(BLEND);
+  noTint();
+  noStroke();
+  background(0,0,0,255);
+  // -----------------------------------------
+
   const ms=millis(), dt=lastFrameMillis? (ms-lastFrameMillis)/1000:0.016; lastFrameMillis=ms;
 
   if (gameState==="menu"){ drawMenus(); return; }
@@ -967,8 +981,8 @@ function mousePressed(){
 
   if (paused){
     const x=mouseX,y=mouseY;
-    if (x>=40&&x<=68&&y>=100&&y<=120){ masterVol=clamp(masterVol-0.1,0,1); masterVolume(masterVol); if (musicBg) musicBg.setVolume(masterVol*0.6); if (l2_musicBg) l2_musicBg.setVolume(masterVol*0.6); }
-    if (x>=212&&x<=240&&y>=100&&y<=120){ masterVol=clamp(masterVol+0.1,0,1); masterVolume(masterVol); if (musicBg) musicBg.setVolume(masterVol*0.6); if (l2_musicBg) l2_musicBg.setVolume(masterVol*0.6); }
+    if (x>=40&&x<=68&&y>=100&&y<=120){ masterVol=clamp(masterVol-0.1,0,1); setGlobalVolume(masterVol); if (musicBg) musicBg.setVolume(masterVol*0.6); if (l2_musicBg) l2_musicBg.setVolume(masterVol*0.6); }
+    if (x>=212&&x<=240&&y>=100&&y<=120){ masterVol=clamp(masterVol+0.1,0,1); setGlobalVolume(masterVol); if (musicBg) musicBg.setVolume(masterVol*0.6); if (l2_musicBg) l2_musicBg.setVolume(masterVol*0.6); }
     if (x>=40&&x<=68&&y>=160&&y<=180){ const v=clamp((bgBrightness-0.5)/1.0 - 0.1,0,1); bgBrightness=0.5+v*1.0; }
     if (x>=212&&x<=240&&y>=160&&y<=180){ const v=clamp((bgBrightness-0.5)/1.0 + 0.1,0,1); bgBrightness=0.5+v*1.0; }
     if (x>=40&&x<=160&&y>=290&&y<=320){ paused=false; gameState="menu"; if (musicBg) musicBg.stop(); if (l2_musicBg) l2_musicBg.stop(); }
