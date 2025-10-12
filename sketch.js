@@ -1,58 +1,14 @@
-/* ================== Storm Night: Tea Runner — MOBILE + DESKTOP + FULLSCREEN ==================
+/* ================== Storm Night: Tea Runner — ASSETS VERSION (WAV, IMG files) ==================
    - Dünya: 2000×1400, Canvas: responsive (pencere boyutu / fullscreen)
-   - Joystick: alt bölgede (y≈0.88H), opaklık %80
+   - Joystick: alt bölgede (y≈0.82H), saydamlık ~%35
    - Otomatik ateş: 1 sn arayla, hareket yönüne
    - Pause: sağ üst "II" ikonuna tık/dokun
    - Fullscreen: HP barının yanında ⛶ düğmesi (tık/dokun → tam ekran aç/kapa)
 */
 
-/* === (0) BASE64 PLACEHOLDERS — BURAYA YAPIŞTIRINIZ ===
-   Ortak / Level 1 */
-const IMG_SPLASH_DATA   = "data:image/png;base64,<<<SPLASH_2048x1536_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_BG1_DATA      = "data:image/png;base64,<<<BG1_2000x1400_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_BG1_ALT_DATA  = "data:image/png;base64,<<<BG1ALT_2000x1400_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_BG_DEF_DATA   = "data:image/png;base64,<<<BG_DEF_2000x1400_BASE64_BURAYA_YAPISTIRINIZ>>>";
-
-const IMG_PLAYER_DATA   = "data:image/png;base64,<<<OYUNCU_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_SPOON_DATA    = "data:image/png;base64,<<<KASIK_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_ALIEN_DATA    = "data:image/png;base64,<<<CAY_ALTLIKI_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_GHOST_DATA    = "data:image/png;base64,<<<KUP_SEKER_GHOST_BASE64_BURAYA_YAPISTIRINIZ>>>";
-
-const IMG_KEY_DATA      = "data:image/png;base64,<<<ANAHTAR_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_COIN_DATA     = "data:image/png;base64,<<<COIN_CAY_PULU_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_CHEST_C_DATA  = "data:image/png;base64,<<<SANDIK_KAPALI_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_CHEST_O_DATA  = "data:image/png;base64,<<<SANDIK_ACIK_BASE64_BURAYA_YAPISTIRINIZ>>>";
-
-const IMG_DEATH_GIF_DATA= "data:image/gif;base64,<<<OLUM_GIFI_BASE64_BURAYA_YAPISTIRINIZ>>>";
-
-const SND_BG_DATA        = "data:audio/wav;base64,<<<BG_MUSIC_BASE64>>>";
-const SND_SHOOT_DATA     = "data:audio/wav;base64,<<<SHOOT_SFX_BASE64>>>";
-const SND_DOOR_DATA      = "data:audio/wav;base64,<<<DOOR_SFX_BASE64>>>";
-const SND_LIGHTNING_DATA = "data:audio/wav;base64,<<<LIGHTNING_SFX_BASE64>>>";
-
-/* === Level 2 — BURAYA YAPIŞTIRINIZ === */
-const IMG_L2_BG1_DATA         = "data:image/png;base64,<<<L2_BG1_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_L2_BG2_DATA         = "data:image/png;base64,<<<L2_BG2_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_L2_TRAP_DATA        = "data:image/png;base64,<<<L2_KUS_KAPANI_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_L2_FINGER_DATA      = "data:image/png;base64,<<<L2_PARMAK_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_L2_NAZAR_DATA       = "data:image/png;base64,<<<L2_NAZAR_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_L2_HONEY_DATA       = "data:image/png;base64,<<<L2_BALLI_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_L2_MIRROR_DATA      = "data:image/png;base64,<<<L2_AYNA_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_L2_SWING_DATA       = "data:image/png;base64,<<<L2_SALINCAK_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_L2_BEAK_DATA        = "data:image/png;base64,<<<L2_GAGA_TASI_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_L2_PLAYER_DATA      = "data:image/png;base64,<<<L2_OYUNCU_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_L2_DEATH_DATA       = "data:image/png;base64,<<<L2_OLUMLUK_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_L2_FLASK_CLOSED_DATA= "data:image/png;base64,<<<L2_SULUK_KAPALI_BASE64_BURAYA_YAPISTIRINIZ>>>";
-const IMG_L2_FLASK_OPEN_DATA  = "data:image/png;base64,<<<L2_SULUK_ACIK_BASE64_BURAYA_YAPISTIRINIZ>>>";
-
-const SND_L2_BG_DATA          = "data:audio/wav;base64,<<<L2_BG_MUSIC_BASE64>>>";
-const SND_L2_SHOOT_DATA       = "data:audio/wav;base64,<<<L2_SHOOT_SFX_BASE64>>>";
-const SND_L2_DOOR_DATA        = "data:audio/wav;base64,<<<L2_DOOR_SFX_BASE64>>>";
-const SND_L2_FINGER_DATA      = "data:audio/wav;base64,<<<L2_FINGER_SFX_BASE64_BURAYA_YAPISTIRINIZ>>>";
-
 /* === (1) Sabitler & Tema === */
 const WORLD_W = 2000, WORLD_H = 1400;
-// Canvas responsive olacak — VIEW_W/H dinamik:
+// Canvas responsive — VIEW_W/H dinamik:
 let VIEW_W, VIEW_H;
 
 const PLAYER_W = 36*1.3, PLAYER_H = 36*1.3;
@@ -81,10 +37,13 @@ const L2_INVULN_TIME_MS = 30000;
 const KEYS_NEEDED = 3;
 const LEVEL_TIME  = 180;
 
-const CHEST_SPAWN_EVERY = 10;
+const CHEST_SPAWN_EVERY = 10; // sn
 const GUARANTEE_KEYS_WINDOW_L1 = 90;
 const GUARANTEE_KEYS_WINDOW_L2 = 120;
 const GUARANTEE_KEYS_COUNT     = 2;
+
+// Düşman hızlarını %5 azaltma çarpanı
+const ENEMY_SPEED_MULT = 0.95;
 
 const THEME = {
   uiBlack: [0,0,0],
@@ -133,7 +92,7 @@ let rain=[];
 /* === (3.1) Joystick (dokunmatik+mouse) === */
 const JOY = {
   cx: 0, cy: 0, baseR: 72, knobR: 30, active: false, id: -1,
-  dx: 0, dy: 0, opacity: 0.8 // daha opak
+  dx: 0, dy: 0, opacity: 0.35 // daha saydam
 };
 let lastAutoShot = 0;
 
@@ -142,8 +101,9 @@ const FS_BTN = {x: 242, y: 8, w: 28, h: 20}; // HP barının sağında
 let wasFullscreen = false;
 
 /* === (4) Görseller/Sesler === */
-let splashImg,bg1Img,bg1AltImg,bgDefImg;
-let playerImg,spoonImg,alienImg,ghostImg,keyImg,coinImg,chestClosedImg,chestOpenImg,deathGif;
+let splashImg,bg1Img,bg1AltImg;
+let playerImg,spoonImg,alienImg,ghostImg,keyImg,coinImg,chestClosedImg,chestOpenImg;
+let deathL1; // L1 için ölüm görseli (png/gif)
 let l2_bg1,l2_bg2,l2_trap,l2_finger,l2_nazar,l2_honey,l2_mirror,l2_swing,l2_beak,l2_player,l2_death,l2_flaskC,l2_flaskO;
 
 let sfxShoot,sfxDoor,sfxLightning,musicBg;
@@ -163,7 +123,6 @@ function screenToWorldY(y){ return y + (centerCam.y - VIEW_H/2); }
 function toggleFullscreen(){
   const fs = !fullscreen();
   fullscreen(fs);
-  // p5 windowResized() tetiklenecek; yine de hemen güncelle
   setTimeout(()=>{ computeCanvasSize(); resizeCanvas(VIEW_W, VIEW_H); applyJoystickLayout(); }, 50);
 }
 
@@ -216,7 +175,7 @@ function computeCanvasSize(){
 }
 function applyJoystickLayout(){
   JOY.cx = VIEW_W/2;
-  JOY.cy = VIEW_H*0.88; // daha aşağı
+  JOY.cy = VIEW_H*0.82; // biraz daha yukarı
 }
 
 /* ========================= L1 İçerikleri ========================= */
@@ -257,7 +216,7 @@ function updateThorns(){
   if (on) thornStayTime+=deltaTime; else thornStayTime=0;
 }
 
-/* Sandık */
+/* Sandık (L1) */
 function spawnChest(){ const p=randInWorld(140); chests.push({x:p.x,y:p.y,open:false,alive:true,despawnAt:null}); }
 function trySpawnChest(dt){ chestSpawnClock+=dt; if (chestSpawnClock>=CHEST_SPAWN_EVERY){ chestSpawnClock=0; spawnChest(); } }
 function openChest(c){
@@ -269,6 +228,7 @@ function openChest(c){
     drop = "key"; openedChestsKeysGiven++;
   } else {
     const r = random();
+    // L1: %25 kalkan, %20 anahtar, %30 çay pulu, %25 boş
     if (r < 0.25) drop = "shield";
     else if (r < 0.45) drop = "key";
     else if (r < 0.75) drop = "coin";
@@ -323,6 +283,7 @@ function l2OpenFlask(f){
     drop = "key"; openedFlasksKeysGiven++;
   } else {
     const r = random();
+    // L2: %25 nazar, %15 anahtar, %30 ballı, %30 boş
     if (r < 0.25) drop = "nazar";
     else if (r < 0.40) drop = "key";
     else if (r < 0.70) drop = "honey";
@@ -374,13 +335,13 @@ function updateEnemies(dt){
 
     if (!isL2){
       if (e.type==="ghost"){
-        const sp=140; e.x+=(dx/d)*sp*dt; e.y+=(dy/d)*sp*dt;
+        const sp=140*ENEMY_SPEED_MULT; e.x+=(dx/d)*sp*dt; e.y+=(dy/d)*sp*dt;
         if (dist2(px,py,e.x,e.y) < 22*22){
           if(!hasInvul()) damagePlayerTyped(DMG_GHOST,"ghost");
           enemyKnockbackFrom(e.x,e.y);
         }
       } else if (e.type==="spoon"){
-        const sp=150; e.x+=(dx/d)*sp*dt; e.y+=(dy/d)*sp*dt;
+        const sp=150*ENEMY_SPEED_MULT; e.x+=(dx/d)*sp*dt; e.y+=(dy/d)*sp*dt;
         if (dist2(px,py,e.x,e.y) < 28*28){
           if(!hasInvul()) damagePlayerTyped(DMG_SPOON,"spoonExplosion");
           enemyKnockbackFrom(e.x,e.y);
@@ -388,7 +349,7 @@ function updateEnemies(dt){
         }
       } else if (e.type==="alien"){
         const base=atan2(dy,dx), ang=base+sin(frameCount*0.03)*0.6;
-        const sp=110; e.x+=cos(ang)*sp*dt; e.y+=sin(ang)*sp*dt;
+        const sp=110*ENEMY_SPEED_MULT; e.x+=cos(ang)*sp*dt; e.y+=sin(ang)*sp*dt;
         e.cd-=dt; if (e.cd<=0){ shootEnemyBullet(e.x,e.y, px,py); e.cd=1.6; }
         if (dist2(px,py,e.x,e.y) < 24*24){
           if(!hasInvul()) damagePlayerTyped(DMG_GHOST,"alienTouch");
@@ -402,7 +363,8 @@ function updateEnemies(dt){
           coins.push({x:e.x, y:e.y, taken:false});
         }
       } else if (e.type==="swing"){
-        e.x += Math.sin(frameCount*0.03)*180*dt;
+        // salınım hızını %5 azalt
+        e.x += Math.sin(frameCount*0.03)*180*ENEMY_SPEED_MULT*dt;
         if (dist2(px,py,e.x,e.y) < 28*28){
           if(!hasInvul()) damagePlayerTyped(Math.round(HP_MAX*0.30),"swing");
           enemyKnockbackFrom(e.x,e.y,70);
@@ -413,7 +375,12 @@ function updateEnemies(dt){
           e.cd = 1.4;
           for (let i=-1;i<=1;i++){
             const ang = Math.atan2(dy,dx) + i*0.15;
-            enemyBullets.push({x:e.x,y:e.y,vx:Math.cos(ang)*300,vy:Math.sin(ang)*300,alive:true,type:"beak"});
+            enemyBullets.push({
+              x:e.x,y:e.y,
+              vx:Math.cos(ang)*300*ENEMY_SPEED_MULT,
+              vy:Math.sin(ang)*300*ENEMY_SPEED_MULT,
+              alive:true,type:"beak"
+            });
           }
         }
         if (dist2(px,py,e.x,e.y) < 26*26){
@@ -429,7 +396,12 @@ function updateEnemies(dt){
 }
 function shootEnemyBullet(x,y,tx,ty){
   const dx=tx-x, dy=ty-y, d=max(1,Math.hypot(dx,dy));
-  enemyBullets.push({x,y,vx:dx/d*280,vy:dy/d*280,alive:true,type:"alien"});
+  enemyBullets.push({
+    x,y,
+    vx:dx/d*280*ENEMY_SPEED_MULT,
+    vy:dy/d*280*ENEMY_SPEED_MULT,
+    alive:true,type:"alien"
+  });
 }
 function updateEnemyBullets(dt){
   enemyBullets = enemyBullets.filter(b=>b.alive);
@@ -658,7 +630,6 @@ function drawBG(){
   if (!isL2){
     if (keyCount>=KEYS_NEEDED && bg1AltImg&&bg1AltImg.width) image(bg1AltImg,0,0,WORLD_W,WORLD_H);
     else if (bg1Img&&bg1Img.width) image(bg1Img,0,0,WORLD_W,WORLD_H);
-    else if (bgDefImg&&bgDefImg.width) image(bgDefImg,0,0,WORLD_W,WORLD_H);
     else background(12,14,18);
   } else {
     if (keyCount>=KEYS_NEEDED && l2_bg2&&l2_bg2.width) image(l2_bg2,0,0,WORLD_W,WORLD_H);
@@ -821,9 +792,7 @@ function drawUI(){
 }
 
 function drawFullscreenButton(){
-  // arkaplan
   fill(235); rect(FS_BTN.x, FS_BTN.y, FS_BTN.w, FS_BTN.h, 4);
-  // simge (⛶ benzeri)
   fill(40); textAlign(CENTER,CENTER); textSize(14);
   text(fullscreen() ? "⤢" : "⛶", FS_BTN.x + FS_BTN.w/2, FS_BTN.y + FS_BTN.h/2 + 1);
 }
@@ -870,7 +839,7 @@ function drawDeathCinematic(){
     drawBG(); if (!isL2) drawThorns(); drawChests(); drawL2Flasks(); drawEnemiesAndBullets(); drawPlayer(); pop();
   } else {
     background(0); imageMode(CENTER);
-    const img = isL2 ? l2_death : deathGif;
+    const img = isL2 ? l2_death : deathL1;
     if (img&&img.width){ const iw=img.width, ih=img.height, sc=Math.max(VIEW_W/iw, VIEW_H/ih); image(img, VIEW_W/2, VIEW_H/2, iw*sc, ih*sc); }
     else { fill(255); textAlign(CENTER,CENTER); textSize(24); text("Öldünüz", VIEW_W/2, VIEW_H/2); }
     if (el>=4){ gameState="gameover"; deathPhase=null; if (musicBg) musicBg.setVolume(masterVol*0.6,0.2); if (l2_musicBg) l2_musicBg.setVolume(masterVol*0.6,0.2); updateBest(); }
@@ -879,42 +848,52 @@ function drawDeathCinematic(){
 
 /* ========================= p5 lifecycle ========================= */
 function preload(){
-  try{ if (IMG_SPLASH_DATA.includes("base64")&&!IMG_SPLASH_DATA.includes("SPLASH_")) splashImg=loadImage(IMG_SPLASH_DATA);}catch(e){}
-  try{ if (IMG_BG1_DATA.includes("base64")&&!IMG_BG1_DATA.includes("BG1_")) bg1Img=loadImage(IMG_BG1_DATA);}catch(e){}
-  try{ if (IMG_BG1_ALT_DATA.includes("base64")&&!IMG_BG1_ALT_DATA.includes("BG1ALT_")) bg1AltImg=loadImage(IMG_BG1_ALT_DATA);}catch(e){}
-  try{ if (IMG_BG_DEF_DATA.includes("base64")&&!IMG_BG_DEF_DATA.includes("BG_DEF_")) bgDefImg=loadImage(IMG_BG_DEF_DATA);}catch(e){}
-  try{ if (IMG_PLAYER_DATA.includes("base64")&&!IMG_PLAYER_DATA.includes("OYUNCU_")) playerImg=loadImage(IMG_PLAYER_DATA);}catch(e){}
-  try{ if (IMG_SPOON_DATA.includes("base64")&&!IMG_SPOON_DATA.includes("KASIK_")) spoonImg=loadImage(IMG_SPOON_DATA);}catch(e){}
-  try{ if (IMG_ALIEN_DATA.includes("base64")&&!IMG_ALIEN_DATA.includes("CAY_")) alienImg=loadImage(IMG_ALIEN_DATA);}catch(e){}
-  try{ if (IMG_GHOST_DATA.includes("base64")&&!IMG_GHOST_DATA.includes("KUP_")) ghostImg=loadImage(IMG_GHOST_DATA);}catch(e){}
-  try{ if (IMG_KEY_DATA.includes("base64")&&!IMG_KEY_DATA.includes("ANAHTAR_")) keyImg=loadImage(IMG_KEY_DATA);}catch(e){}
-  try{ if (IMG_COIN_DATA.includes("base64")&&!IMG_COIN_DATA.includes("COIN_")) coinImg=loadImage(IMG_COIN_DATA);}catch(e){}
-  try{ if (IMG_CHEST_C_DATA.includes("base64")&&!IMG_CHEST_C_DATA.includes("SANDIK_")) chestClosedImg=loadImage(IMG_CHEST_C_DATA);}catch(e){}
-  try{ if (IMG_CHEST_O_DATA.includes("base64")&&!IMG_CHEST_O_DATA.includes("SANDIK_")) chestOpenImg=loadImage(IMG_CHEST_O_DATA);}catch(e){}
-  try{ if (IMG_DEATH_GIF_DATA.includes("base64")&&!IMG_DEATH_GIF_DATA.includes("OLUM_")) deathGif=loadImage(IMG_DEATH_GIF_DATA);}catch(e){}
+  // IMG
+  try{ splashImg     = loadImage('assets/img/splash.png'); }catch(e){}
+  try{ bg1Img        = loadImage('assets/img/bg1.png'); }catch(e){}
+  try{ bg1AltImg     = loadImage('assets/img/bg1_alt.png'); }catch(e){}
+  try{ playerImg     = loadImage('assets/img/player.png'); }catch(e){}
+  try{ spoonImg      = loadImage('assets/img/spoon.png'); }catch(e){}
+  try{ alienImg      = loadImage('assets/img/alien.png'); }catch(e){}
+  try{ ghostImg      = loadImage('assets/img/ghost.png'); }catch(e){}
+  try{ keyImg        = loadImage('assets/img/key.png'); }catch(e){}
+  try{ coinImg       = loadImage('assets/img/coin.png'); }catch(e){}
+  try{ chestClosedImg= loadImage('assets/img/chest_closed.png'); }catch(e){}
+  try{ chestOpenImg  = loadImage('assets/img/chest_open.png'); }catch(e){}
+  // L1 ölüm görseli (png yoksa gif dene)
+  try{
+    deathL1 = loadImage('assets/img/death_l1.png', ()=>{}, ()=>{
+      try{ deathL1 = loadImage('assets/img/death_l1.gif'); }catch(e){}
+    });
+  }catch(e){}
+  // L2
+  try{ l2_bg1   = loadImage('assets/img/l2_bg1.png'); }catch(e){}
+  try{ l2_bg2   = loadImage('assets/img/l2_bg2.png'); }catch(e){}
+  try{ l2_trap  = loadImage('assets/img/l2_trap.png'); }catch(e){}
+  try{ l2_finger= loadImage('assets/img/l2_finger.png'); }catch(e){}
+  try{ l2_nazar = loadImage('assets/img/l2_nazar.png'); }catch(e){}
+  try{ l2_honey = loadImage('assets/img/l2_honey.png'); }catch(e){}
+  try{ l2_mirror= loadImage('assets/img/l2_mirror.png'); }catch(e){}
+  try{ l2_swing = loadImage('assets/img/l2_swing.png'); }catch(e){}
+  try{ l2_beak  = loadImage('assets/img/l2_beak.png'); }catch(e){}
+  try{ l2_player= loadImage('assets/img/l2_player.png'); }catch(e){}
+  try{ l2_flaskC= loadImage('assets/img/l2_flask_closed.png'); }catch(e){}
+  try{ l2_flaskO= loadImage('assets/img/l2_flask_open.png'); }catch(e){}
+  try{
+    l2_death = loadImage('assets/img/l2_death.png', ()=>{}, ()=>{
+      try{ l2_death = loadImage('assets/img/l2_death.gif'); }catch(e){}
+    });
+  }catch(e){}
 
-  try{ if (IMG_L2_BG1_DATA.includes("base64")&&!IMG_L2_BG1_DATA.includes("L2_BG1")) l2_bg1=loadImage(IMG_L2_BG1_DATA);}catch(e){}
-  try{ if (IMG_L2_BG2_DATA.includes("base64")&&!IMG_L2_BG2_DATA.includes("L2_BG2")) l2_bg2=loadImage(IMG_L2_BG2_DATA);}catch(e){}
-  try{ if (IMG_L2_TRAP_DATA.includes("base64")&&!IMG_L2_TRAP_DATA.includes("L2_KUS")) l2_trap=loadImage(IMG_L2_TRAP_DATA);}catch(e){}
-  try{ if (IMG_L2_FINGER_DATA.includes("base64")&&!IMG_L2_FINGER_DATA.includes("L2_PAR")) l2_finger=loadImage(IMG_L2_FINGER_DATA);}catch(e){}
-  try{ if (IMG_L2_NAZAR_DATA.includes("base64")&&!IMG_L2_NAZAR_DATA.includes("L2_NAZ")) l2_nazar=loadImage(IMG_L2_NAZAR_DATA);}catch(e){}
-  try{ if (IMG_L2_HONEY_DATA.includes("base64")&&!IMG_L2_HONEY_DATA.includes("L2_BAL")) l2_honey=loadImage(IMG_L2_HONEY_DATA);}catch(e){}
-  try{ if (IMG_L2_MIRROR_DATA.includes("base64")&&!IMG_L2_MIRROR_DATA.includes("L2_AYN")) l2_mirror=loadImage(IMG_L2_MIRROR_DATA);}catch(e){}
-  try{ if (IMG_L2_SWING_DATA.includes("base64")&&!IMG_L2_SWING_DATA.includes("L2_SAL")) l2_swing=loadImage(IMG_L2_SWING_DATA);}catch(e){}
-  try{ if (IMG_L2_BEAK_DATA.includes("base64")&&!IMG_L2_BEAK_DATA.includes("L2_GAG")) l2_beak=loadImage(IMG_L2_BEAK_DATA);}catch(e){}
-  try{ if (IMG_L2_PLAYER_DATA.includes("base64")&&!IMG_L2_PLAYER_DATA.includes("L2_OYU")) l2_player=loadImage(IMG_L2_PLAYER_DATA);}catch(e){}
-  try{ if (IMG_L2_DEATH_DATA.includes("base64")&&!IMG_L2_DEATH_DATA.includes("L2_OLU")) l2_death=loadImage(IMG_L2_DEATH_DATA);}catch(e){}
-  try{ if (IMG_L2_FLASK_CLOSED_DATA.includes("base64")&&!IMG_L2_FLASK_CLOSED_DATA.includes("L2_SULUK_KAP")) l2_flaskC=loadImage(IMG_L2_FLASK_CLOSED_DATA);}catch(e){}
-  try{ if (IMG_L2_FLASK_OPEN_DATA.includes("base64")&&!IMG_L2_FLASK_OPEN_DATA.includes("L2_SULUK_AC")) l2_flaskO=loadImage(IMG_L2_FLASK_OPEN_DATA);}catch(e){}
-
-  try{ if (SND_BG_DATA.includes("base64")&&!SND_BG_DATA.includes("BG_MUSIC")) musicBg=loadSound(SND_BG_DATA);}catch(e){}
-  try{ if (SND_SHOOT_DATA.includes("base64")&&!SND_SHOOT_DATA.includes("SHOOT_SFX")) sfxShoot=loadSound(SND_SHOOT_DATA);}catch(e){}
-  try{ if (SND_DOOR_DATA.includes("base64")&&!SND_DOOR_DATA.includes("DOOR_SFX")) sfxDoor=loadSound(SND_DOOR_DATA);}catch(e){}
-  try{ if (SND_LIGHTNING_DATA.includes("base64")&&!SND_LIGHTNING_DATA.includes("LIGHT")) sfxLightning=loadSound(SND_LIGHTNING_DATA);}catch(e){}
-  try{ if (SND_L2_BG_DATA.includes("base64")&&!SND_L2_BG_DATA.includes("L2_BG")) l2_musicBg=loadSound(SND_L2_BG_DATA);}catch(e){}
-  try{ if (SND_L2_SHOOT_DATA.includes("base64")&&!SND_L2_SHOOT_DATA.includes("L2_SHOOT")) l2_sfxShoot=loadSound(SND_L2_SHOOT_DATA);}catch(e){}
-  try{ if (SND_L2_DOOR_DATA.includes("base64")&&!SND_L2_DOOR_DATA.includes("L2_DOOR")) l2_sfxDoor=loadSound(SND_L2_DOOR_DATA);}catch(e){}
-  try{ if (SND_L2_FINGER_DATA.includes("base64")&&!SND_L2_FINGER_DATA.includes("L2_FINGER")) l2_sfxFinger=loadSound(SND_L2_FINGER_DATA);}catch(e){}
+  // AUDIO (WAV)
+  try{ musicBg     = loadSound('assets/audio/bg_music.wav'); }catch(e){}
+  try{ sfxShoot    = loadSound('assets/audio/shoot.wav'); }catch(e){}
+  try{ sfxDoor     = loadSound('assets/audio/door.wav'); }catch(e){}
+  try{ sfxLightning= loadSound('assets/audio/lightning.wav'); }catch(e){}
+  try{ l2_musicBg  = loadSound('assets/audio/l2_bg_music.wav'); }catch(e){}
+  try{ l2_sfxShoot = loadSound('assets/audio/l2_shoot.wav'); }catch(e){}
+  try{ l2_sfxDoor  = loadSound('assets/audio/l2_door.wav'); }catch(e){}
+  try{ l2_sfxFinger= loadSound('assets/audio/l2_finger.wav'); }catch(e){}
 }
 function setup(){
   computeCanvasSize();
@@ -935,6 +914,7 @@ function startGame(){
     masterVolume(masterVol);
     musicBg.setLoop(true);
     musicBg.setVolume(masterVol*0.6);
+    // 5 saniyelik WAV döngüsü — loop parametreleri: (startTime, rate, amp, cueStart, duration)
     musicBg.loop(0,1,masterVol*0.6,0,5.0);
     musicBg.onended(()=>{ if (musicBg && !musicBg.isPlaying()) musicBg.loop(0,1,masterVol*0.6,0,5.0); });
   }
@@ -944,7 +924,6 @@ let lastFrameMillis=0;
 function draw(){
   const ms=millis(), dt=lastFrameMillis? (ms-lastFrameMillis)/1000:0.016; lastFrameMillis=ms;
 
-  // Fullscreen durum değiştiyse joystick konumunu tazele
   if (wasFullscreen !== fullscreen()){ wasFullscreen = fullscreen(); applyJoystickLayout(); }
 
   if (gameState==="menu"){ drawMenus(); return; }
@@ -1018,10 +997,8 @@ function mousePressed(){
   if (gameState==="levelTransition" || gameState==="levelClear"){ return; }
   if (gameState==="gameover"){ startGame(); return; }
 
-  // Fullscreen butonu
   if (isFullscreenBtnHit(x,y)){ toggleFullscreen(); return; }
 
-  // Pause ikon
   if (isPauseIconHit(x,y) && !deathPhase){
     paused=!paused; const vol=masterVol*(paused?0.3:0.6);
     if (musicBg) musicBg.setVolume(vol,0.2); if (l2_musicBg) l2_musicBg.setVolume(vol,0.2);
