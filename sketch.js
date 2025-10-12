@@ -12,7 +12,7 @@
             death_l1.gif)
      /audio/ (bg_music.wav, shoot.wav, door.wav, lightning.wav,
               l2_bg_music.wav, l2_shoot.wav, l2_door.wav, l2_finger.wav)
-============================================================================== */
+====================================================================== */
 
 const PATH = { img: "assets/img/", audio: "assets/audio/" };
 
@@ -26,7 +26,8 @@ const ALIEN_W  = 42*1.3, ALIEN_H = 30*1.3;   // çay altlığı %30 büyüdü
 const GHOST_W  = 28*1.2, GHOST_H = 28*1.2;
 
 const KEY_W = 28, KEY_H = 28;
-const COIN_W = 20*1.4, COIN_H = 20*1.4;
+const COIN_W = 20*1.4, COIN_H = 20*1.4;     // L1 coin
+const HONEY_W = 22*1.4, HONEY_H = 22*1.4;   // L2 ballı
 const CHEST_W = 36, CHEST_H = 30;
 
 const PLAYER_SPEED = 160;
@@ -95,6 +96,7 @@ let transitionStart=0;
 /* === (3) L2 Özel === */
 let isL2=false;
 let l2_traps=[], l2_fingers=[], l2_telegraphs=[];
+let l2_strikes=[]; // parmak inme anı görseli için
 let l2_flasks=[];
 let rain=[];
 
@@ -137,15 +139,26 @@ function baseResetCommon(){
   timeLeft=LEVEL_TIME; enemies=[]; enemyBullets=[]; bullets=[];
   coins=[]; loots=[]; chests=[]; thorns=[]; thornStayTime=0;
   lightTelegraphs=[]; lightStrikes=[];
-  l2_traps=[]; l2_fingers=[]; l2_telegraphs=[]; l2_flasks=[];
+  l2_traps=[]; l2_fingers=[]; l2_telegraphs=[]; l2_flasks=[]; l2_strikes=[];
   shieldUntil=0; invulUntil=0;
   rain=[]; for (let i=0;i<RAIN_COUNT;i++) rain.push({x:random(WORLD_W),y:random(WORLD_H),v:600+random(300)});
   waveClock=0; chestSpawnClock=0;
   openedChestsKeysGiven=0; openedFlasksKeysGiven=0;
   levelStartTime=now();
 
-  // Kamera başlangıçta oyuncuya sabitlenir (L2 çeyrek görünüm sorununu önler)
+  // Kamera başlangıçta oyuncuya sabitlenir + hemen güncelle (çeyrek görünüm bug fix)
   centerCam = createVector(px, py);
+  updateCamera();
+}
+
+function spawnGuaranteedMirror(){
+  // Oyuncudan ~350 px uzakta garanti bir ayna
+  let ang = random(TWO_PI);
+  let rx = px + Math.cos(ang)*350;
+  let ry = py + Math.sin(ang)*350;
+  rx = clamp(rx, 60, WORLD_W-60);
+  ry = clamp(ry, 60, WORLD_H-60);
+  enemies.push({type:"mirror", x:rx, y:ry, vx:0, vy:0, cd:0, alive:true, wob:0});
 }
 
 function resetLevel(){
@@ -153,11 +166,12 @@ function resetLevel(){
   isL2 = (level===1);
   if (!isL2){ // L1
     spawnThorns(10);
-    for(let i=0;i<3;i++) coins.push({...randInWorld(100), taken:false});
+    for(let i=0;i<3;i++) coins.push({...randInWorld(100), taken:false, kind:"coin"});
   } else { // L2
     for(let i=0;i<6;i++) l2_flasks.push({...randInWorld(140), open:false, alive:true});
     for(let i=0;i<8;i++) l2_traps.push({...randInWorld(120)});
     for(let i=0;i<4;i++) l2_fingers.push({});
+    spawnGuaranteedMirror(); // görünürlük ve test için garanti
   }
 }
 
@@ -246,12 +260,12 @@ function openChest(c){
 
   if (drop === "shield") loots.push({x:c.x, y:c.y, type:"shield", alive:true, origin:c});
   if (drop === "key")    loots.push({x:c.x, y:c.y, type:"key",    alive:true, origin:c});
-  if (drop === "coin")   coins.push({x:c.x + random(-6,6), y:c.y + random(-6,6), taken:false, originChest:c});
+  if (drop === "coin")   coins.push({x:c.x + random(-6,6), y:c.y + random(-6,6), taken:false, originChest:c, kind:"coin"});
   if (drop === "none")   c.despawnAt = now() + 5000; // BOŞ ise 5 sn
 }
 
 /* ========================= L2 İçerikleri ========================= */
-// Parmak (telegraph + darbe)
+// Parmak (telegraph + inme görseli + darbe)
 function l2SpawnFingerTelegraph(){
   const p=randInWorld(120);
   l2_telegraphs.push({x:p.x,y:p.y, tHit:now()+1000, type:"finger"});
@@ -261,22 +275,37 @@ function l2UpdateTelegraphs(){
   const t=now(); const keep=[];
   for (let g of l2_telegraphs){
     if (t>=g.tHit){
-      if (g.type==="finger"){
-        if (l2_sfxFinger) l2_sfxFinger.play();
-        if (dist2(px,py,g.x,g.y) < (22*22) && !hasInvul()) damagePlayerTyped(Math.round(HP_MAX*0.30),"finger");
-      }
+      // vur!
+      if (l2_sfxFinger) l2_sfxFinger.play();
+      // inme görseli (300ms)
+      l2_strikes.push({x:g.x,y:g.y, until: t+300});
+      if (dist2(px,py,g.x,g.y) < (26*26) && !hasInvul()) damagePlayerTyped(Math.round(HP_MAX*0.30),"finger");
     } else keep.push(g);
   }
-  l2_telegraphs.length=0; l2_telegraphs.push(...keep);
+  l2_telegraphs=keep;
+  // strike yaşam süresi
+  l2_strikes = l2_strikes.filter(s => now() < s.until);
 }
-// Kuş kapanı (draw + logic)
+function drawL2Strikes(){
+  // parmak sprite'ı büyük çizilsin (ör. 140x140)
+  for (let s of l2_strikes){
+    imageMode(CENTER);
+    if (l2_finger && l2_finger.width){
+      image(l2_finger, s.x, s.y, 140, 140);
+    } else {
+      fill(255,230,180,220); circle(s.x, s.y, 120);
+    }
+  }
+}
+
+// Kuş kapanı (logic + 4× çizim)
 let l2_trapHold = {until:0, invisible:false};
 function l2UpdateTraps(){
   if (now()<l2_trapHold.until){} else { l2_trapHold.invisible=false; }
   for (let t of l2_traps){
     const tx = t.x ?? (t.x=randInWorld(100).x);
     const ty = t.y ?? (t.y=randInWorld(100).y);
-    if (dist2(px,py,tx,ty) < (26*26)){
+    if (dist2(px,py,tx,ty) < (30*30)){
       if (now()>=l2_trapHold.until){
         l2_trapHold.until = now()+1000; l2_trapHold.invisible = true;
         setTimeout(()=>{
@@ -295,13 +324,13 @@ function drawL2Traps(){
     const ty = t.y ?? (t.y=randInWorld(100).y);
     imageMode(CENTER);
     if (l2_trap && l2_trap.width){
-      image(l2_trap, tx, ty, 36, 36);
+      image(l2_trap, tx, ty, 36*4, 36*4); // 4× büyütüldü
     } else {
-      // fallback çizim
-      noFill(); stroke(80,180,255); circle(tx,ty,28); noStroke();
+      noFill(); stroke(80,180,255); circle(tx,ty,28*4); noStroke();
     }
   }
 }
+
 // Suluk (kapalı/açık)
 function l2OpenFlask(f){
   if (f.open) return;
@@ -324,7 +353,7 @@ function l2OpenFlask(f){
 
   if (drop === "nazar") loots.push({x:f.x, y:f.y, type:"nazar", alive:true, origin:f});
   if (drop === "key")   loots.push({x:f.x, y:f.y, type:"key",   alive:true, origin:f});
-  if (drop === "honey") coins.push({x:f.x + random(-6,6), y:f.y + random(-6,6), taken:false, originFlask:f});
+  if (drop === "honey") coins.push({x:f.x + random(-6,6), y:f.y + random(-6,6), taken:false, originFlask:f, kind:"honey"});
   if (drop === "none")  f.despawnAt = now() + 5000;
 }
 
@@ -357,7 +386,7 @@ function updateEnemies(dt){
       else if (t<60){ if(random()<0.7)spawnEnemy("ghost"); if(random()<0.4)spawnEnemy("spoon"); }
       else { if(random()<0.7)spawnEnemy("ghost"); if(random()<0.5)spawnEnemy("spoon"); if(random()<0.3)spawnEnemy("alien"); }
     } else {
-      // Ağırlıklar güncellendi: mirror daha sık
+      // Ağırlıklar: mirror daha sık
       const r=random();
       if (r<0.45) spawnEnemy("mirror");
       else if (r<0.75) spawnEnemy("swing");
@@ -395,10 +424,10 @@ function updateEnemies(dt){
       if (e.type==="mirror"){
         // hareketsiz engel; mermi yansıtır — öldürmek için temas
         if (dist2(px,py,e.x,e.y) < 26*26){
-          e.alive=false; coins.push({x:e.x, y:e.y, taken:false});
+          e.alive=false; coins.push({x:e.x, y:e.y, taken:false, kind:"honey"}); // L2: düşman ballı düşürür
         }
       } else if (e.type==="swing"){
-        // salınım hareketi
+        // salıncak: 6× büyük çizilecek; hafif salınım hareketi
         e.wob += dt*2.2;
         e.x += Math.sin(e.wob)*90*dt;
         if (dist2(px,py,e.x,e.y) < 28*28){
@@ -407,8 +436,7 @@ function updateEnemies(dt){
         }
       } else if (e.type==="beak"){
         // oyuncuya doğru yavaş yaklaşım + sinüs yan salınım
-        const base=atan2(dy,dx);
-        const sp=90; // yavaş takip
+        const sp=90;
         e.x += (dx/d)*sp*dt + Math.cos(e.wob)*40*dt;
         e.y += (dy/d)*sp*dt + Math.sin(e.wob*1.1)*30*dt;
         e.wob += dt*2.0;
@@ -505,7 +533,6 @@ function shootPlayer_L2(){
   // ardışık 3 burst: 0ms, 120ms, 240ms
   [0,120,240].forEach((delay, idx)=>{
     setTimeout(()=>{
-      // oyuncu hareket etmiş olsa bile yeni merkezden atsın
       offs.forEach(o=> fireArcOnce(aim, o));
       if (idx===0 && l2_sfxShoot) l2_sfxShoot.play();
     }, delay);
@@ -590,7 +617,8 @@ function updateBullets(dt){
           continue;
         }
         e.alive=false;
-        coins.push({x:e.x, y:e.y, taken:false});
+        // L2'de düşmanlardan ballı düşsün; L1'de coin
+        coins.push({x:e.x, y:e.y, taken:false, kind: isL2 ? "honey" : "coin"});
         if (!b.wave || b.arc) b.alive=false;
         break;
       }
@@ -628,7 +656,7 @@ function ensureFinalKey(){
 }
 
 function updateCoinsAndDoor(){
-  // Coin pickup (+%3 HP) + despawn işaretleme
+  // Coin/Honey pickup (+%3 HP) + despawn işaretleme
   for (let c of coins){
     if (!c.taken && dist2(px,py,c.x,c.y)<18*18){
       c.taken=true; scoreTotal+=3; hp=Math.min(HP_MAX, hp+Math.round(HP_MAX*0.03));
@@ -708,6 +736,10 @@ function drawL2Telegraphs(){
   textAlign(CENTER,CENTER); fill(255,230,80);
   for (let g of l2_telegraphs){ textSize(22); text("!", g.x, g.y-28); noFill(); stroke(255,230,80); circle(g.x,g.y,40); noStroke(); }
 }
+function drawL2StrikesAndTraps(){
+  drawL2Strikes();
+  drawL2Traps();
+}
 function drawChests(){
   for (let c of chests){
     if (!c.alive) continue; imageMode(CENTER);
@@ -735,9 +767,21 @@ function drawEnemiesAndBullets(){
       else if (e.type==="spoon"){ imageMode(CENTER); if (spoonImg&&spoonImg.width) image(spoonImg,e.x,e.y,SPOON_W,SPOON_H); else { fill(200); rect(e.x-6,e.y-20,12,40,6);} }
       else if (e.type==="alien"){ imageMode(CENTER); if (alienImg&&alienImg.width) image(alienImg,e.x,e.y,ALIEN_W,ALIEN_H); else { fill(200,60,60); ellipse(e.x,e.y,ALIEN_W,ALIEN_H*0.7);} }
     } else {
-      if (e.type==="mirror"){ imageMode(CENTER); if (l2_mirror&&l2_mirror.width) image(l2_mirror,e.x,e.y,40,40); else { fill(180); rect(e.x-16,e.y-16,32,32,6);} }
-      else if (e.type==="swing"){ imageMode(CENTER); if (l2_swing&&l2_swing.width) image(l2_swing,e.x,e.y,46,46); else { fill(150); ellipse(e.x,e.y,34,34);} }
-      else if (e.type==="beak"){ imageMode(CENTER); if (l2_beak&&l2_beak.width) image(l2_beak,e.x,e.y,40,28); else { fill(220,180,60); triangle(e.x-12,e.y+8, e.x+12,e.y+8, e.x, e.y-10);} }
+      if (e.type==="mirror"){
+        imageMode(CENTER);
+        if (l2_mirror&&l2_mirror.width) image(l2_mirror,e.x,e.y,60,60);  // daha belirgin
+        else { fill(180); rect(e.x-24,e.y-24,48,48,6); fill(30); textAlign(CENTER,CENTER); text("MIR", e.x, e.y); }
+      }
+      else if (e.type==="swing"){
+        imageMode(CENTER);
+        if (l2_swing&&l2_swing.width) image(l2_swing,e.x,e.y,46*6,46*6); // 6×
+        else { fill(150); ellipse(e.x,e.y,34*6,34*6); }
+      }
+      else if (e.type==="beak"){
+        imageMode(CENTER);
+        if (l2_beak&&l2_beak.width) image(l2_beak,e.x,e.y,40,28);
+        else { fill(220,180,60); triangle(e.x-12,e.y+8, e.x+12,e.y+8, e.x, e.y-10); }
+      }
     }
   }
 
@@ -770,8 +814,15 @@ function drawEnemiesAndBullets(){
   }
 }
 function drawCoins(){
-  for (let c of coins){ if (c.taken) continue; imageMode(CENTER);
-    if (coinImg&&coinImg.width) image(coinImg,c.x,c.y,COIN_W,COIN_H); else { fill(240,200,90); circle(c.x,c.y,14); }
+  for (let c of coins){
+    if (c.taken) continue; imageMode(CENTER);
+    if (c.kind==="honey"){
+      if (l2_honey && l2_honey.width) image(l2_honey, c.x, c.y, HONEY_W, HONEY_H);
+      else { fill(255,210,80); circle(c.x,c.y,16); }
+    } else {
+      if (coinImg&&coinImg.width) image(coinImg,c.x,c.y,COIN_W,COIN_H);
+      else { fill(240,200,90); circle(c.x,c.y,14); }
+    }
   }
 }
 function drawLoots(){
@@ -910,11 +961,23 @@ function drawDeathCinematic(){
     translate(-px + (centerCam.x - VIEW_W/2), -py + (centerCam.y - VIEW_H/2));
     drawBG(); if (!isL2) drawThorns(); drawChests(); drawL2Flasks(); drawEnemiesAndBullets(); drawPlayer(); pop();
   } else {
-    background(0); imageMode(CENTER);
-    const img = isL2 ? (l2_death||deathGifL1) : (deathGifL1||l2_death);
-    if (img&&img.width){ const iw=img.width, ih=img.height, sc=Math.max(VIEW_W/iw, VIEW_H/ih); image(img, VIEW_W/2, VIEW_H/2, iw*sc, ih*sc); }
-    else { fill(255); textAlign(CENTER,CENTER); textSize(24); text("Öldünüz", VIEW_W/2, VIEW_H/2); }
-    if (el>=4){ gameState="gameover"; deathPhase=null; if (musicBg) musicBg.setVolume(masterVol*0.6,0.2); if (l2_musicBg) l2_musicBg.setVolume(masterVol*0.6,0.2); updateBest(); }
+    background(0);
+    // GIF: p5 loadImage animasyon oynatmaz; DOM <img> ile göster
+    if (!drawDeathCinematic._imgMounted){
+      const src = isL2 ? (PATH.img+"l2_death.gif") : (PATH.img+"death_l1.gif");
+      drawDeathCinematic._dom = createImg(src, "death");
+      drawDeathCinematic._dom.style('position','absolute');
+      drawDeathCinematic._dom.style('left', (windowWidth/2 - VIEW_W/2 + VIEW_W/2 - 160) + 'px');
+      drawDeathCinematic._dom.style('top',  (windowHeight/2 - VIEW_H/2 + VIEW_H/2 - 120) + 'px');
+      drawDeathCinematic._dom.size(320,240); // ekrana sığan orta boy
+      drawDeathCinematic._imgMounted = true;
+    }
+    fill(255); textAlign(CENTER,CENTER); textSize(18);
+    text("Öldünüz", VIEW_W/2, VIEW_H/2+160);
+    if (el>=4){
+      if (drawDeathCinematic._dom){ drawDeathCinematic._dom.remove(); drawDeathCinematic._dom=null; drawDeathCinematic._imgMounted=false; }
+      gameState="gameover"; deathPhase=null; updateBest();
+    }
   }
 }
 
@@ -974,6 +1037,7 @@ function setup(){
 function startGame(){
   try{ if (getAudioContext().state!=='running') getAudioContext().resume(); }catch(e){}
   chapter=0; scoreTotal=0; level=0; resetLevel(); gameState="play"; lastFrameMillis=millis();
+  // tüm müzikleri güvenli başlat
   if (musicBg){
     setGlobalVolume(masterVol);
     musicBg.setLoop(true);
@@ -1037,7 +1101,7 @@ function draw(){
   push(); translate(-centerCam.x+VIEW_W/2, -centerCam.y+VIEW_H/2);
   drawBG();
   if (!isL2){ drawThorns(); drawLightning(); drawChests(); }
-  else { drawL2Traps(); drawL2Flasks(); drawL2Telegraphs(); }
+  else { drawL2StrikesAndTraps(); drawL2Flasks(); drawL2Telegraphs(); }
   drawCoins(); drawLoots(); drawEnemiesAndBullets(); drawPlayer();
   pop();
 
@@ -1049,7 +1113,7 @@ function drawPauseWorld(){
   push(); translate(-centerCam.x+VIEW_W/2, -centerCam.y+VIEW_H/2);
   drawBG();
   if (!isL2){ drawThorns(); drawLightning(); drawChests(); }
-  else { drawL2Traps(); drawL2Flasks(); drawL2Telegraphs(); }
+  else { drawL2StrikesAndTraps(); drawL2Flasks(); drawL2Telegraphs(); }
   drawCoins(); drawLoots(); drawEnemiesAndBullets(); drawPlayer(); pop(); drawUI();
 }
 
@@ -1090,9 +1154,13 @@ function keyPressed(){
 
 /* ========================= Ölüm / Game Over ========================= */
 function startDeathSequence(){
+  // ölüm anında TÜM sesleri kes
+  try{
+    if (musicBg && musicBg.isPlaying()) musicBg.stop();
+    if (l2_musicBg && l2_musicBg.isPlaying()) l2_musicBg.stop();
+    [sfxShoot,sfxDoor,sfxLightning,l2_sfxShoot,l2_sfxDoor,l2_sfxFinger].forEach(s=>{ try{ if (s && s.isPlaying()) s.stop(); }catch(e){} });
+  }catch(e){}
   deathPhase="zoom"; deathStart=now(); zoomScale=1;
-  if (musicBg) musicBg.setVolume(masterVol*0.3,0.2);
-  if (l2_musicBg) l2_musicBg.setVolume(masterVol*0.3,0.2);
 }
 function drawGameOver(){
   resetMatrix(); background(10,12,16); fill(235); textAlign(CENTER,CENTER); textSize(32);
