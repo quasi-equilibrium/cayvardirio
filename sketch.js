@@ -20,9 +20,9 @@ const PATH = { img: "assets/img/", audio: "assets/audio/" };
 const WORLD_W = 2000, WORLD_H = 1400;
 const VIEW_W  = 960,  VIEW_H  = 540;
 
-const PLAYER_W = 36*1.3, PLAYER_H = 36*1.3; // %30 büyütme
+const PLAYER_W = 36*1.3, PLAYER_H = 36*1.3; // %30 büyütme (oyuncu)
 const SPOON_W  = 46, SPOON_H = 58;
-const ALIEN_W  = 42, ALIEN_H = 30;
+const ALIEN_W  = 42*1.3, ALIEN_H = 30*1.3;   // çay altlığı %30 büyüdü
 const GHOST_W  = 28*1.2, GHOST_H = 28*1.2;
 
 const KEY_W = 28, KEY_H = 28;
@@ -36,7 +36,7 @@ const SHOOT_CD_MS  = 260;
 const HP_MAX = 100;
 const DMG_GHOST = 15;
 const DMG_SPOON = 25;
-const DMG_ALIEN = 12;
+const DMG_ALIEN = 6; // alien (çay altlığı) mermisi %50 azaltıldı
 
 const SHIELD_REDUCE = 0.85; // %85 azaltma (L1 shield)
 const SHIELD_TIME_MS = 10000;
@@ -67,6 +67,9 @@ const THEME = {
 const RAIN_COUNT = 160;
 const BASE_FLASH_CHANCE = 0.009;
 const AOE_RADIUS_BASE = 60;
+
+// Tam ekran butonu (HP barı yanına)
+const FS_BTN = { x: 240, y: 10, w: 24, h: 16 };
 
 /* === (2) Durum === */
 let px,py,vx=0,vy=0,lastShoot=0,centerCam;
@@ -575,6 +578,16 @@ function maybeLightning(){
 }
 
 /* ========================= Coins / Loot / Door ========================= */
+function ensureFinalKey(){
+  if (timeLeft <= 30 && keyCount < KEYS_NEEDED){
+    const exists = loots.some(l => l.alive && l.type==="key");
+    if (!exists){
+      const p = randInWorld(120);
+      loots.push({x:p.x, y:p.y, type:"key", alive:true, origin:null});
+    }
+  }
+}
+
 function updateCoinsAndDoor(){
   // Coin pickup (+%3 HP) + despawn işaretleme
   for (let c of coins){
@@ -770,19 +783,36 @@ function drawUI(){
   if (hasShield()){ noFill(); stroke(THEME.shield); rect(10,10,224,16,6); noStroke(); }
   if (hasInvul()){ noFill(); stroke(0,180,255); rect(8,8,228,20,6); noStroke(); }
 
-  // Yazılar (beyaz)
+  // Fullscreen düğmesi (HP yanında)
+  fill(255); rect(FS_BTN.x, FS_BTN.y, FS_BTN.w, FS_BTN.h, 3);
+  fill(0);
+  if (!fullscreen()){
+    rect(FS_BTN.x+5, FS_BTN.y+4, 4, 4);
+    rect(FS_BTN.x+FS_BTN.w-9, FS_BTN.y+FS_BTN.h-8, 4, 4);
+  } else {
+    rect(FS_BTN.x+FS_BTN.w-9, FS_BTN.y+4, 4, 4);
+    rect(FS_BTN.x+5, FS_BTN.y+FS_BTN.h-8, 4, 4);
+  }
+
+  // Sayaç ortada ve renkli
+  const m=nf(floor(timeLeft/60),2), s=nf(floor(timeLeft%60),2);
+  const tsec = timeLeft;
+  let tc = color(255);            // 3-2 dk beyaz
+  if (tsec <= 120 && tsec > 60) tc = color(255,215,0);   // 2-1 dk sarı
+  if (tsec <= 60)                tc = color(255,70,70);  // 1-0 dk kırmızı
+  fill(tc);
+  textAlign(CENTER,TOP); textSize(14);
+  text(`Süre: ${m}:${s}`, VIEW_W/2, 10);
+
+  // Anahtar / skor (sol üst)
   fill(THEME.uiWhite); textSize(14); textAlign(LEFT,TOP);
   text(`Anahtar: ${keyCount}/${KEYS_NEEDED}`, 12, 32);
   text(`Skor: ${scoreTotal}`, 12, 50);
 
-  textAlign(RIGHT,TOP);
-  const m=nf(floor(timeLeft/60),2), s=nf(floor(timeLeft%60),2);
-  text(`Süre: ${m}:${s}`, VIEW_W-12, 10);
-
-  // Pause ikonu
+  // Pause ikonu (sağ üst)
   fill(255); rect(VIEW_W-26,10,4,16,2); rect(VIEW_W-18,10,4,16,2);
 
-  // Ekran kenarı yön oku
+  // Ekran kenarı yön oku (bilgi)
   if (keyCount>=KEYS_NEEDED){
     fill(THEME.doorArrow);
     if (!isL2){ const tx=VIEW_W-40,ty=40; triangle(tx,ty, tx-14,ty-8, tx-14,ty+8); }
@@ -828,8 +858,9 @@ function drawLevelTransition(){
 function drawDeathCinematic(){
   const el=(now()-deathStart)/1000;
   if (deathPhase==="zoom"){
-    zoomScale=Math.min(1.25, 1 + el*0.625);
-    if (zoomScale>=1.25){ deathPhase="gif"; deathStart=now(); }
+    // Daha az ve daha yavaş zoom
+    zoomScale=Math.min(1.125, 1 + el*0.3125);
+    if (zoomScale>=1.125){ deathPhase="gif"; deathStart=now(); }
     push(); translate(VIEW_W/2, VIEW_H/2); scale(zoomScale);
     translate(-px + (centerCam.x - VIEW_W/2), -py + (centerCam.y - VIEW_H/2));
     drawBG(); if (!isL2) drawThorns(); drawChests(); drawL2Flasks(); drawEnemiesAndBullets(); drawPlayer(); pop();
@@ -955,6 +986,7 @@ function draw(){
   updateBullets(dt);
   if (!isL2){ updateThorns(); maybeLightning(); }
   updateCoinsAndDoor();
+  ensureFinalKey();  // son 30 sn anahtar garantisi
   updateCamera();
 
   push(); translate(-centerCam.x+VIEW_W/2, -centerCam.y+VIEW_H/2);
@@ -988,6 +1020,13 @@ function mousePressed(){
     if (x>=40&&x<=160&&y>=290&&y<=320){ paused=false; gameState="menu"; if (musicBg) musicBg.stop(); if (l2_musicBg) l2_musicBg.stop(); }
     return;
   }
+
+  // Fullscreen butonu (pause değilken)
+  if (mouseX>=FS_BTN.x && mouseX<=FS_BTN.x+FS_BTN.w && mouseY>=FS_BTN.y && mouseY<=FS_BTN.y+FS_BTN.h){
+    fullscreen(!fullscreen());
+    return;
+  }
+
   shootPlayer();
 }
 function keyPressed(){
