@@ -1,4 +1,4 @@
-/* ============= Storm Night: Tea Runner — FILE-BASED ASSETS (L1+L2) =============
+/* ============= Çayvardır.io — FILE-BASED ASSETS (L1+L2) =============
    Klasör yapısı:
    /index.html
    /sketch.js
@@ -17,7 +17,7 @@
 const PATH = { img: "assets/img/", audio: "assets/audio/" };
 
 /* === (1) Sabitler & Tema === */
-const WORLD_W = 2000, WORLD_H = 1400;
+const WORLD_W = 2000, WORLD_H = 1400; // arkaplanlar 2000x1400
 const VIEW_W  = 960,  VIEW_H  = 540;
 
 const PLAYER_W = 36*1.3, PLAYER_H = 36*1.3; // %30 büyütme (oyuncu)
@@ -62,7 +62,8 @@ const THEME = {
   doorArrow: [240,200,60],
   moveArrow: [230,230,255],
   rain: [200,200,255,90],
-  compass: [255,220,90]
+  compass: [255,220,90],
+  l2ArcBlue: [80,160,255]  // L2 mavi yay rengi
 };
 const RAIN_COUNT = 160;
 const BASE_FLASH_CHANCE = 0.009;
@@ -142,6 +143,9 @@ function baseResetCommon(){
   waveClock=0; chestSpawnClock=0;
   openedChestsKeysGiven=0; openedFlasksKeysGiven=0;
   levelStartTime=now();
+
+  // Kamera başlangıçta oyuncuya sabitlenir (L2 çeyrek görünüm sorununu önler)
+  centerCam = createVector(px, py);
 }
 
 function resetLevel(){
@@ -265,7 +269,7 @@ function l2UpdateTelegraphs(){
   }
   l2_telegraphs.length=0; l2_telegraphs.push(...keep);
 }
-// Kuş kapanı
+// Kuş kapanı (draw + logic)
 let l2_trapHold = {until:0, invisible:false};
 function l2UpdateTraps(){
   if (now()<l2_trapHold.until){} else { l2_trapHold.invisible=false; }
@@ -282,6 +286,19 @@ function l2UpdateTraps(){
         },1000);
       }
       break;
+    }
+  }
+}
+function drawL2Traps(){
+  for (let t of l2_traps){
+    const tx = t.x ?? (t.x=randInWorld(100).x);
+    const ty = t.y ?? (t.y=randInWorld(100).y);
+    imageMode(CENTER);
+    if (l2_trap && l2_trap.width){
+      image(l2_trap, tx, ty, 36, 36);
+    } else {
+      // fallback çizim
+      noFill(); stroke(80,180,255); circle(tx,ty,28); noStroke();
     }
   }
 }
@@ -323,7 +340,7 @@ function spawnEnemy(type){
     if (side===3){ x=WORLD_W+40; y=random(WORLD_H); }
     tries++;
   } while (tries < 10 && dist2(x,y,px,py) < (320*320));
-  enemies.push({type, x, y, vx:0, vy:0, cd:0, alive:true});
+  enemies.push({type, x, y, vx:0, vy:0, cd:0, alive:true, wob:random(TWO_PI)});
 }
 function updateEnemies(dt){
   enemies = enemies.filter(e=>e.alive);
@@ -340,9 +357,10 @@ function updateEnemies(dt){
       else if (t<60){ if(random()<0.7)spawnEnemy("ghost"); if(random()<0.4)spawnEnemy("spoon"); }
       else { if(random()<0.7)spawnEnemy("ghost"); if(random()<0.5)spawnEnemy("spoon"); if(random()<0.3)spawnEnemy("alien"); }
     } else {
+      // Ağırlıklar güncellendi: mirror daha sık
       const r=random();
-      if (r<0.34) spawnEnemy("mirror");
-      else if (r<0.67) spawnEnemy("swing");
+      if (r<0.45) spawnEnemy("mirror");
+      else if (r<0.75) spawnEnemy("swing");
       else spawnEnemy("beak");
     }
   }
@@ -367,7 +385,7 @@ function updateEnemies(dt){
       } else if (e.type==="alien"){
         const base=atan2(dy,dx), ang=base+sin(frameCount*0.03)*0.6;
         const sp=110; e.x+=cos(ang)*sp*dt; e.y+=sin(ang)*sp*dt;
-        e.cd-=dt; if (e.cd<=0){ shootEnemyBullet(e.x,e.y, px,py); e.cd=1.6; }
+        e.cd-=dt; if (e.cd<=0){ shootEnemyBullet(e.x,e.y, px,py,"alien"); e.cd=1.6; }
         if (dist2(px,py,e.x,e.y) < 24*24){
           if(!hasInvul()) damagePlayerTyped(DMG_GHOST,"alienTouch");
           enemyKnockbackFrom(e.x,e.y);
@@ -375,21 +393,32 @@ function updateEnemies(dt){
       }
     } else {
       if (e.type==="mirror"){
+        // hareketsiz engel; mermi yansıtır — öldürmek için temas
         if (dist2(px,py,e.x,e.y) < 26*26){
           e.alive=false; coins.push({x:e.x, y:e.y, taken:false});
         }
       } else if (e.type==="swing"){
-        e.x += Math.sin(frameCount*0.03)*180*dt;
+        // salınım hareketi
+        e.wob += dt*2.2;
+        e.x += Math.sin(e.wob)*90*dt;
         if (dist2(px,py,e.x,e.y) < 28*28){
           if(!hasInvul()) damagePlayerTyped(Math.round(HP_MAX*0.30),"swing");
           enemyKnockbackFrom(e.x,e.y,70);
         }
       } else if (e.type==="beak"){
+        // oyuncuya doğru yavaş yaklaşım + sinüs yan salınım
+        const base=atan2(dy,dx);
+        const sp=90; // yavaş takip
+        e.x += (dx/d)*sp*dt + Math.cos(e.wob)*40*dt;
+        e.y += (dy/d)*sp*dt + Math.sin(e.wob*1.1)*30*dt;
+        e.wob += dt*2.0;
+
+        // 3'lü atış (beyaz mermi)
         e.cd -= dt;
         if (e.cd<=0){
           e.cd = 1.4;
           for (let i=-1;i<=1;i++){
-            const ang = Math.atan2(dy,dx) + i*0.15;
+            const ang = Math.atan2(py - e.y, px - e.x) + i*0.15;
             enemyBullets.push({x:e.x,y:e.y,vx:Math.cos(ang)*300,vy:Math.sin(ang)*300,alive:true,type:"beak"});
           }
         }
@@ -408,9 +437,9 @@ function enemyKnockbackFrom(x,y, mul=40){
   const dx=px-x, dy=py-y; const d=max(1,Math.hypot(dx,dy));
   px += (dx/d)*mul; py += (dy/d)*mul; worldClamp();
 }
-function shootEnemyBullet(x,y,tx,ty){
+function shootEnemyBullet(x,y,tx,ty,type="alien"){
   const dx=tx-x, dy=ty-y, d=max(1,Math.hypot(dx,dy));
-  enemyBullets.push({x,y,vx:dx/d*280,vy:dy/d*280,alive:true,type:"alien"});
+  enemyBullets.push({x,y,vx:dx/d*280,vy:dy/d*280,alive:true,type});
 }
 function updateEnemyBullets(dt){
   enemyBullets = enemyBullets.filter(b=>b.alive);
@@ -453,24 +482,34 @@ function shootPlayer_L1(){
   }
   if (sfxShoot) sfxShoot.play();
 }
-/* L2 mermisi — 45°’lik büyüyen yay (arc) */
+
+/* L2 mermisi — 45°’lik yaylar; 120ms aralıkla ardışık 3 atış (mavi) */
+function fireArcOnce(aim, offset){
+  bullets.push({
+    x:px, y:py,
+    alive:true, life:1.1,
+    r:14, grow:220,
+    wave:true, arc:true,
+    a: aim + offset,
+    width: Math.PI/4,
+    reflect:false,
+    arcColor: THEME.l2ArcBlue   // çizimde mavi
+  });
+}
 function shootPlayer_L2(){
   const t=now(); if (t-lastShoot<SHOOT_CD_MS) return; lastShoot=t;
   const mx=screenToWorldX(mouseX), my=screenToWorldY(mouseY);
   const aim = Math.atan2(my - py, mx - px);
   const offs = [-0.12, 0, 0.12];
-  for (let o of offs){
-    bullets.push({
-      x:px, y:py,
-      alive:true, life:1.1,
-      r:14, grow:220,
-      wave:true, arc:true,
-      a: aim + o,
-      width: Math.PI/4,
-      reflect:false
-    });
-  }
-  if (l2_sfxShoot) l2_sfxShoot.play();
+
+  // ardışık 3 burst: 0ms, 120ms, 240ms
+  [0,120,240].forEach((delay, idx)=>{
+    setTimeout(()=>{
+      // oyuncu hareket etmiş olsa bile yeni merkezden atsın
+      offs.forEach(o=> fireArcOnce(aim, o));
+      if (idx===0 && l2_sfxShoot) l2_sfxShoot.play();
+    }, delay);
+  });
 }
 function shootPlayer(){ if (isL2) shootPlayer_L2(); else shootPlayer_L1(); }
 
@@ -702,9 +741,13 @@ function drawEnemiesAndBullets(){
     }
   }
 
-  // düşman mermileri
-  fill(isL2? THEME.enemyRed : [220,60,60]);
-  for (let b of enemyBullets){ circle(b.x,b.y,6); }
+  // düşman mermileri — beak beyaz, diğerleri kırmızı
+  for (let b of enemyBullets){
+    if (b.type==="beak"){ fill(255); stroke(255); }
+    else { fill(THEME.enemyRed); stroke(THEME.enemyRed); }
+    circle(b.x,b.y,6);
+    noStroke();
+  }
 
   // oyuncu mermileri
   for (let b of bullets){
@@ -713,7 +756,9 @@ function drawEnemiesAndBullets(){
       noFill(); stroke(255,150); circle(b.x,b.y,b.r*2.4); noStroke();
     } else {
       if (b.arc){
-        noFill(); stroke(255);
+        noFill();
+        const col = b.arcColor || (isL2? THEME.l2ArcBlue : [255,255,255]);
+        stroke(col[0], col[1], col[2]);
         const start = b.a - (b.width||Math.PI/4)/2;
         const stop  = b.a + (b.width||Math.PI/4)/2;
         arc(b.x, b.y, (b.r*2), (b.r*2), start, stop);
@@ -847,7 +892,7 @@ function drawMenus(){
     image(splashImg, VIEW_W/2, VIEW_H/2-20, iw*sc, ih*sc);
     noTint(); blendMode(BLEND);
   }
-  fill(0); textAlign(CENTER,CENTER); textSize(32); text("Storm Night: Tea Runner", VIEW_W/2, VIEW_H/2+96);
+  fill(0); textAlign(CENTER,CENTER); textSize(32); text("Çayvardır.io", VIEW_W/2, VIEW_H/2+96);
   textSize(14); text("Başlamak için Tıkla veya Space", VIEW_W/2, VIEW_H/2+136);
   textSize(12); text("WASD • Fare/Space ateş • 3 anahtar → çıkış", VIEW_W/2, VIEW_H/2+160);
 }
@@ -991,7 +1036,8 @@ function draw(){
 
   push(); translate(-centerCam.x+VIEW_W/2, -centerCam.y+VIEW_H/2);
   drawBG();
-  if (!isL2){ drawThorns(); drawLightning(); drawChests(); } else { drawL2Flasks(); drawL2Telegraphs(); }
+  if (!isL2){ drawThorns(); drawLightning(); drawChests(); }
+  else { drawL2Traps(); drawL2Flasks(); drawL2Telegraphs(); }
   drawCoins(); drawLoots(); drawEnemiesAndBullets(); drawPlayer();
   pop();
 
@@ -1001,7 +1047,9 @@ function draw(){
 }
 function drawPauseWorld(){
   push(); translate(-centerCam.x+VIEW_W/2, -centerCam.y+VIEW_H/2);
-  drawBG(); if (!isL2){ drawThorns(); drawLightning(); drawChests(); } else { drawL2Flasks(); drawL2Telegraphs(); }
+  drawBG();
+  if (!isL2){ drawThorns(); drawLightning(); drawChests(); }
+  else { drawL2Traps(); drawL2Flasks(); drawL2Telegraphs(); }
   drawCoins(); drawLoots(); drawEnemiesAndBullets(); drawPlayer(); pop(); drawUI();
 }
 
