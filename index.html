@@ -4,15 +4,46 @@
   <meta charset="utf-8" />
   <title>Storm Night: Tea Runner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- p5 core + sound -->
+
+  <!-- (Opsiyonel) Favicon: 404 uyarısını önler -->
+  <link rel="icon" href="assets/img/splash.png" />
+
+  <style>
+    /* Sayfayı temiz ve merkezi tut */
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #0a0c10;
+      color: #fff;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    /* Canvas'ı hem yatay hem dikey ortala */
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    canvas {
+      display: block;
+      image-rendering: pixelated; /* retro keskinlik */
+      /* İstersen kenarlık/çerçeve:
+      box-shadow: 0 10px 30px rgba(0,0,0,.4);
+      border-radius: 10px;
+      */
+    }
+  </style>
+
+  <!-- p5 core + p5.sound (SIRA ÖNEMLİ) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/p5.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/addons/p5.sound.min.js"></script>
-  <style>
-    html, body { margin:0; background:#0a0c10; color:#fff; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
-    canvas { display:block; margin:0 auto; image-rendering: pixelated; }
-  </style>
 </head>
 <body>
-  <script src="sketch.js"></script>
+  <!-- Oyun kodu -->
+  <script src="sketch.js?v=7"></script>
+
+  <!-- No-JS uyarısı (isteğe bağlı) -->
+  <noscript style="position:fixed;left:0;right:0;bottom:0;background:#111;color:#fff;padding:10px;text-align:center;">
+    Bu oyunu oynamak için tarayıcınızda JavaScript açık olmalıdır.
+  </noscript>
 </body>
 </html>
