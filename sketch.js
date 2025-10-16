@@ -1027,10 +1027,18 @@ function preload(){
   l2_sfxFinger= loadSound(PATH.audio+"l2_finger.wav");
 }
 function setup(){
+  // *** ÖNEMLİ: Retina/çeyrek görünüm sorununu önlemek için önce pixelDensity(1) ***
+  pixelDensity(1);
+
   createCanvas(VIEW_W, VIEW_H);
-  pixelDensity(1);   // ghosting azalt
+  noSmooth();        // ekstra keskinlik
   frameRate(60);
-  noSmooth();        // smear azalt
+
+  // Bazı tarayıcılarda ek netlik
+  if (drawingContext && drawingContext.imageSmoothingEnabled !== undefined) {
+    drawingContext.imageSmoothingEnabled = false;
+  }
+
   centerCam=createVector(WORLD_W/2, WORLD_H/2);
   try{ bestTotal=Number(localStorage.getItem("tea_runner_best")||"0"); }catch(e){}
 }
