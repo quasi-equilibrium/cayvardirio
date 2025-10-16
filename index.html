@@ -2,14 +2,16 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8" />
-  <title>Storm Night: Tea Runner</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Çayvardır.io</title>
 
-  <!-- (Opsiyonel) Favicon: 404 uyarısını önler -->
+  <!-- Mobil ve yüksek DPI için güvenli viewport -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+
+  <!-- Favicon (404 uyarısı olmasın) -->
   <link rel="icon" href="assets/img/splash.png" />
 
   <style>
-    /* Sayfayı temiz ve merkezi tut */
+    /* Sayfayı temiz tut, merkezlemenin kontrolü bizim container'da */
     html, body {
       height: 100%;
       margin: 0;
@@ -17,19 +19,37 @@
       color: #fff;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
-    /* Canvas'ı hem yatay hem dikey ortala */
-    body {
-      display: flex;
-      align-items: center;
-      justify-content: center;
+
+    /* Tüm sayfayı ortalayan dış kap */
+    .page {
+      min-height: 100%;
+      display: grid;
+      place-items: center; /* hem yatay hem dikey tam ortalama */
     }
+
+    /* Canvas için sabit bir çerçeve: 960×540 piksellik alan */
+    .stage {
+      width: 960px;
+      height: 540px;
+      display: grid;
+      place-items: center;
+      /* İstersen görsel çerçeve: */
+      /* box-shadow: 0 10px 30px rgba(0,0,0,.4); border-radius: 10px; */
+    }
+
+    /* p5'in oluşturacağı canvas: CSS boyutu ATTR ile birebir aynı! */
     canvas {
       display: block;
+      width: 960px !important;   /* ← CSS boyutu kilit */
+      height: 540px !important;  /* ← CSS boyutu kilit */
       image-rendering: pixelated; /* retro keskinlik */
-      /* İstersen kenarlık/çerçeve:
-      box-shadow: 0 10px 30px rgba(0,0,0,.4);
-      border-radius: 10px;
-      */
+      /* transform, scale, translate KULLANMIYORUZ! */
+    }
+
+    /* Güvenlik: body veya üst atalara yanlışlıkla transform uygulanırsa etkisiz kıl */
+    body, .page, .stage {
+      transform: none !important;
+      transform-origin: 50% 50% !important;
     }
   </style>
 
@@ -38,10 +58,38 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/addons/p5.sound.min.js"></script>
 </head>
 <body>
-  <!-- Oyun kodu -->
-  <script src="sketch.js?v=7"></script>
+  <div class="page">
+    <div class="stage">
+      <!-- p5 burada <canvas> oluşturacak -->
+    </div>
+  </div>
 
-  <!-- No-JS uyarısı (isteğe bağlı) -->
+  <!-- Oyun kodu EN SONA: p5 canvas'ı gövdeye eklerken doğru CSS uygulanmış olacak -->
+  <script>
+    // p5'in oluşturacağı canvas'ı .stage içine koydurmak için parent ayarı:
+    // sketch.js içinde createCanvas(...) çağrısından sonra parent('stage') yapmak yerine,
+    // burada global bir hook kullanıyoruz.
+    (function () {
+      const origCreateCanvas = window.createCanvas;
+      // createCanvas henüz yüklenmeden çağrılamaz; bu nedenle sketch.js yüklendikten sonra işlesin.
+      window.addEventListener('load', () => {
+        // p5 global hazır olduğunda stage div'ini bul
+        const stageEl = document.querySelector('.stage');
+        // sketch.js içindeki setup çağrısından sonra canvas oluşur;
+        // o oluştuğunda parent ayarlayacağız. Bunu yapmak için p5'in _setupDone olayını beklemek yerine
+        // kısa bir makul gecikme kullanıyoruz.
+        setTimeout(() => {
+          const cvs = document.querySelector('canvas');
+          if (cvs && stageEl && cvs.parentElement !== stageEl) {
+            stageEl.appendChild(cvs); // canvas'ı stage içine taşı
+          }
+        }, 0);
+      });
+    })();
+  </script>
+
+  <script src="sketch.js?v=8"></script>
+
   <noscript style="position:fixed;left:0;right:0;bottom:0;background:#111;color:#fff;padding:10px;text-align:center;">
     Bu oyunu oynamak için tarayıcınızda JavaScript açık olmalıdır.
   </noscript>
