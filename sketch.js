@@ -447,7 +447,11 @@ function updateCoinsAndDoor(){
 
 /* === Çizimler === */
 function drawBG(){
+  // Önce arkaplanı temizle
+  background(12,14,18);
+  
   // ekran (0,0)-(VIEW_W,VIEW_H) ; kaynak pencere (camX,camY,VIEW_W,VIEW_H)
+  imageMode(CORNER); // KRİTİK: imageMode CORNER olmalı kaynak dikdörtgen için
   let img=null;
   if (!isL2){
     img = (keyCount>=KEYS_NEEDED && bg1AltImg&&bg1AltImg.width) ? bg1AltImg : bg1Img;
@@ -455,8 +459,9 @@ function drawBG(){
   } else {
     img = (keyCount>=KEYS_NEEDED && l2_bg2&&l2_bg2.width) ? l2_bg2 : l2_bg1;
   }
-  if (img && img.width) image(img, 0,0, VIEW_W,VIEW_H, camX,camY, VIEW_W,VIEW_H);
-  else { background(12,14,18); }
+  if (img && img.width && img.width > 0) {
+    image(img, 0, 0, VIEW_W, VIEW_H, camX, camY, VIEW_W, VIEW_H);
+  }
 
   // yağmur (dünya → ekrana)
   stroke(THEME.rain[0],THEME.rain[1],THEME.rain[2],THEME.rain[3]);
@@ -746,15 +751,16 @@ function preload(){
   l2_flaskO=loadImage(PATH.img+"l2_flask_open.png");
   try{ deathGifL1=loadImage(PATH.img+"death_l1.gif"); }catch(e){}
 
-  musicBg=loadSound(PATH.audio+"bg_music.wav");
-  sfxShoot=loadSound(PATH.audio+"shoot.wav");
-  sfxDoor=loadSound(PATH.audio+"door.wav");
-  sfxLightning=loadSound(PATH.audio+"lightning.wav");
+  // Ses dosyalarını güvenli şekilde yükle
+  try{ musicBg=loadSound(PATH.audio+"bg_music.wav"); }catch(e){ console.warn("bg_music.wav yüklenemedi:",e); }
+  try{ sfxShoot=loadSound(PATH.audio+"shoot.wav"); }catch(e){ console.warn("shoot.wav yüklenemedi:",e); }
+  try{ sfxDoor=loadSound(PATH.audio+"door.wav"); }catch(e){ console.warn("door.wav yüklenemedi:",e); }
+  try{ sfxLightning=loadSound(PATH.audio+"lightning.wav"); }catch(e){ console.warn("lightning.wav yüklenemedi:",e); }
 
-  l2_musicBg=loadSound(PATH.audio+"l2_bg_music.wav");
-  l2_sfxShoot=loadSound(PATH.audio+"l2_shoot.wav");
-  l2_sfxDoor=loadSound(PATH.audio+"l2_door.wav");
-  l2_sfxFinger=loadSound(PATH.audio+"l2_finger.wav");
+  try{ l2_musicBg=loadSound(PATH.audio+"l2_bg_music.wav"); }catch(e){ console.warn("l2_bg_music.wav yüklenemedi:",e); }
+  try{ l2_sfxShoot=loadSound(PATH.audio+"l2_shoot.wav"); }catch(e){ console.warn("l2_shoot.wav yüklenemedi:",e); }
+  try{ l2_sfxDoor=loadSound(PATH.audio+"l2_door.wav"); }catch(e){ console.warn("l2_door.wav yüklenemedi:",e); }
+  try{ l2_sfxFinger=loadSound(PATH.audio+"l2_finger.wav"); }catch(e){ console.warn("l2_finger.wav yüklenemedi:",e); }
 }
 function setup(){
   pixelDensity(1); // KRİTİK: retina sapmalarını önle
@@ -777,7 +783,8 @@ function startGame(){
 
 let lastFrameMillis=0;
 function draw(){
-  resetMatrix(); blendMode(BLEND); noTint(); noStroke(); background(0);
+  resetMatrix(); blendMode(BLEND); noTint(); noStroke();
+  // background(0) kaldırıldı - drawBG() kendi background'unu yapacak
   const ms=millis(), dt=lastFrameMillis? (ms-lastFrameMillis)/1000:0.016; lastFrameMillis=ms;
 
   if (gameState==="menu"){ drawMenus(); return; }
